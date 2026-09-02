@@ -1,13 +1,13 @@
-﻿"""
-Orquestra├º├úo do Grafo LangGraph para AcolheCAPS AI.
+"""
+Orquestração do Grafo LangGraph para AcolheCAPS AI.
 
-Este m├│dulo implementa o fluxo ag├¬ntico com:
+Este módulo implementa o fluxo agêntico com:
 - StateGraph tipado e seguro
-- N├│s com responsabilidades isoladas
-- Execu├º├úo sequencial e paralela
+- Nós com responsabilidades isoladas
+- Execução sequencial e paralela
 - Roteamento condicional baseado em prioridade de risco
-- Prote├º├úo contra loops infinitos
-- Integra├º├úo com Groq LLM para an├ílise de risco
+- Proteção contra loops infinitos
+- Integração com Groq LLM para análise de risco
 """
 
 import json
@@ -55,13 +55,13 @@ class AcolhimentoState(TypedDict):
     
     Attributes:
         entrada: Dados de entrada validados
-        historico_chat: Hist├│rico de intera├º├Áes e decis├Áes
-        contexto_rag: Contexto recuperado de diretrizes cl├¡nicas
-        resultado_territorial: Resultado da valida├º├úo territorial
+        historico_chat: Histórico de interações e decisões
+        contexto_rag: Contexto recuperado de diretrizes clínicas
+        resultado_territorial: Resultado da validação territorial
         ficha_triagem: Ficha de triagem estruturada
         requer_aprovacao_humana: Flag de human-in-the-loop
         status_processamento: Status atual do processamento
-        tentativas_approval: Contador de tentativas de aprova├º├úo (para evitar loops)
+        tentativas_approval: Contador de tentativas de aprovação (para evitar loops)
     """
     entrada: dict  # EntradaAcolhimento serializado
     historico_chat: List[dict]
@@ -79,23 +79,23 @@ class AcolhimentoState(TypedDict):
 
 def node_extracao(state: AcolhimentoState) -> AcolhimentoState:
     """
-    NODE 1: Extra├º├úo e S├¡ntese do Relato
+    NODE 1: Extração e Síntese do Relato
     """
     trace_id = _current_trace_id
-    logger.info(f"[NODE_EXTRACAO] Iniciando s├¡ntese do relato | trace_id={trace_id}")
+    logger.info(f"[NODE_EXTRACAO] Iniciando síntese do relato | trace_id={trace_id}")
     
     try:
         entrada = state["entrada"]
         relato = entrada.get("relato", "")
         
-        # Simula├º├úo de extra├º├úo e s├¡ntese (em produ├º├úo, usaria LLM)
+        # Simulação de extração e síntese (em produção, usaria LLM)
         pontos_chave = [
             "Sintoma identificado no relato",
-            "Dura├º├úo/frequ├¬ncia dos sintomas",
-            "Contexto socioecon├┤mico"
+            "Duração/frequência dos sintomas",
+            "Contexto socioeconômico"
         ]
         
-        # Atualiza hist├│rico
+        # Atualiza histórico
         novo_historico = state["historico_chat"].copy()
         novo_historico.append({
             "node": "extracao",
@@ -109,13 +109,13 @@ def node_extracao(state: AcolhimentoState) -> AcolhimentoState:
         state["status_processamento"] = "extracao_concluida"
         
         logger.info(
-            f"[NODE_EXTRACAO] S├¡ntese conclu├¡da | "
+            f"[NODE_EXTRACAO] Síntese concluída | "
             f"pontos_chave={len(pontos_chave)} | trace_id={trace_id}"
         )
         
     except Exception as e:
         logger.error(
-            f"[NODE_EXTRACAO] Erro durante s├¡ntese | "
+            f"[NODE_EXTRACAO] Erro durante síntese | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
         raise
@@ -124,12 +124,12 @@ def node_extracao(state: AcolhimentoState) -> AcolhimentoState:
 
 
 def node_rag_diretrizes(state: AcolhimentoState) -> dict:
-    """NODE 2A: Busca em RAG (Diretrizes Cl├¡nicas)"""
+    """NODE 2A: Busca em RAG (Diretrizes Clínicas)"""
     trace_id = _current_trace_id
     logger.info(f"[NODE_RAG_DIRETRIZES] Iniciando busca em diretrizes | trace_id={trace_id}")
     
     try:
-        contexto_rag = "Diretrizes para Ansiedade: Avalia├º├úo de sintomatologia..."
+        contexto_rag = "Diretrizes para Ansiedade: Avaliação de sintomatologia..."
         
         logger.info(
             f"[NODE_RAG_DIRETRIZES] Contexto recuperado | "
@@ -144,14 +144,9 @@ def node_rag_diretrizes(state: AcolhimentoState) -> dict:
 
 
 def node_mcp_territorio(state: AcolhimentoState) -> dict:
-    """
-    NODE 2B: Validacao Territorial via MCP Tool
-    
-    Integra a Tool MCP para validar se o CEP/Bairro pertence a area
-    de cobertura do CAPS. Suporta timeout e fallback automatico.
-    """
+    """NODE 2B: Validação Territorial via MCP Tool"""
     trace_id = _current_trace_id
-    logger.info(f"[NODE_MCP_TERRITORIO] Iniciando validacao territorial | trace_id={trace_id}")
+    logger.info(f"[NODE_MCP_TERRITORIO] Iniciando validação territorial | trace_id={trace_id}")
     
     try:
         entrada = state["entrada"]
@@ -159,7 +154,7 @@ def node_mcp_territorio(state: AcolhimentoState) -> dict:
         bairro = entrada.get("bairro", "").strip()
         municipio = entrada.get("municipio", "").strip()
         
-        # Obtem a Tool MCP
+        # Obtém a Tool MCP
         tool = obter_tool_territorial(trace_id=trace_id)
         
         # Valida territorialmente (async)
@@ -169,13 +164,13 @@ def node_mcp_territorio(state: AcolhimentoState) -> dict:
             "municipio": municipio or "Nao informado"
         }
         
-        # Executa validacao com timeout de 5 segundos
+        # Executa validação com timeout de 5 segundos
         resultado = asyncio.run(
             tool.validar_territorial(payload, timeout=5)
         )
         
         logger.info(
-            f"[NODE_MCP_TERRITORIO] Validacao concluida | "
+            f"[NODE_MCP_TERRITORIO] Validação concluída | "
             f"cep={cep} | valido={resultado['valido']} | "
             f"fallback={resultado['fallback']} | trace_id={trace_id}"
         )
@@ -184,10 +179,9 @@ def node_mcp_territorio(state: AcolhimentoState) -> dict:
         
     except Exception as e:
         logger.error(
-            f"[NODE_MCP_TERRITORIO] Erro na validacao territorial | "
+            f"[NODE_MCP_TERRITORIO] Erro na validação territorial | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
-        # Retorna resultado de erro (sem fallback, falha clara)
         return {
             "resultado_territorial": {
                 "valido": False,
@@ -201,20 +195,20 @@ def node_mcp_territorio(state: AcolhimentoState) -> dict:
 
 def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
     """
-    NODE 3: Avalia├º├úo de Risco e Defini├º├úo de Prioridade
+    NODE 3: Avaliação de Risco e Definição de Prioridade
     """
     trace_id = _current_trace_id
-    logger.info(f"[NODE_AVALIACAO_RISCO] Iniciando avalia├º├úo de risco com Groq | trace_id={trace_id}")
+    logger.info(f"[NODE_AVALIACAO_RISCO] Iniciando avaliação de risco com Groq | trace_id={trace_id}")
     
     try:
         entrada = state["entrada"]
         relato = entrada.get("relato", "").lower()
         contexto_rag = state.get("contexto_rag", "")
         
-        # Obt├®m LLM Groq
+        # Obtém LLM Groq
         llm = get_groq_llm()
         
-        # Chama Groq para avalia├º├úo
+        # Chama Groq para avaliação
         prioridade, fatores_risco = llm.avaliar_nivel_prioridade(
             relato=entrada.get("relato", ""),
             contexto_rag=contexto_rag,
@@ -222,11 +216,11 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         )
         
         # Valida prioridade retornada
-        if prioridade not in ["Alta", "M├®dia", "Baixa"]:
-            prioridade = "M├®dia"  # default seguro
+        if prioridade not in ["Alta", "Média", "Baixa"]:
+            prioridade = "Média"  # default seguro
             logger.warning(
-                f"[NODE_AVALIACAO_RISCO] Prioridade inv├ílida retornada por Groq | "
-                f"prioridade={prioridade} | usando M├®dia como fallback | trace_id={trace_id}"
+                f"[NODE_AVALIACAO_RISCO] Prioridade inválida retornada por Groq | "
+                f"prioridade={prioridade} | usando Média como fallback | trace_id={trace_id}"
             )
         
         # Recomenda oficinas baseado em prioridade
@@ -235,10 +229,10 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
             oficinas_sugeridas = [
                 "Oficina de Mindfulness",
                 "Grupo de Suporte em Ansiedade",
-                "Psicoeduca├º├úo em Sa├║de Mental"
+                "Psicoeducação em Saúde Mental"
             ]
-        # Prioridades M├®dia e Alta: sem recomenda├º├úo autom├ítica de oficinas
-        # Recomenda├º├Áes vir├úo ap├│s aprova├º├úo humana profissional
+        # Prioridades Média e Alta: sem recomendação automática de oficinas
+        # Recomendações virão após aprovação humana profissional
         
         # Cria ficha de triagem
         ficha = {
@@ -251,8 +245,8 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         }
         
         state["ficha_triagem"] = ficha
-        # Human-in-the-loop para prioridades M├®dia e Alta
-        state["requer_aprovacao_humana"] = (prioridade in ["Alta", "M├®dia"])
+        # Human-in-the-loop para prioridades Média e Alta
+        state["requer_aprovacao_humana"] = (prioridade in ["Alta", "Média"])
         
         novo_historico = state["historico_chat"].copy()
         novo_historico.append({
@@ -268,7 +262,7 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         state["status_processamento"] = "avaliacao_concluida"
         
         logger.info(
-            f"[NODE_AVALIACAO_RISCO] Avalia├º├úo conclu├¡da com Groq | "
+            f"[NODE_AVALIACAO_RISCO] Avaliação concluída com Groq | "
             f"prioridade={prioridade} | "
             f"fatores_risco={len(fatores_risco)} | "
             f"requer_approval={state['requer_aprovacao_humana']} | trace_id={trace_id}"
@@ -276,17 +270,17 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         
     except Exception as e:
         logger.error(
-            f"[NODE_AVALIACAO_RISCO] Erro durante avalia├º├úo com Groq | "
+            f"[NODE_AVALIACAO_RISCO] Erro durante avaliação com Groq | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
-        # Fallback: classifica como M├®dia para ser seguro
+        # Fallback: classifica como Média para ser seguro
         state["ficha_triagem"] = {
-            "nivel_prioridade": "M├®dia",
-            "fatores_risco": ["Erro na avalia├º├úo - necess├íria revis├úo profissional"],
+            "nivel_prioridade": "Média",
+            "fatores_risco": ["Erro na avaliação - necessária revisão profissional"],
             "oficinas_sugeridas": [],
             "status_aprovacao": "pendente",
             "data_criacao": datetime.utcnow().isoformat(),
-            "observacoes": f"Erro na an├ílise: {str(e)}"
+            "observacoes": f"Erro na análise: {str(e)}"
         }
         state["requer_aprovacao_humana"] = True
         raise
@@ -299,10 +293,10 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
     NODE 4A: Human-in-the-Loop para Prioridade Alta
     """
     trace_id = _current_trace_id
-    logger.info(f"[NODE_HUMAN_IN_THE_LOOP] Aguardando aprova├º├úo humana | trace_id={trace_id}")
+    logger.info(f"[NODE_HUMAN_IN_THE_LOOP] Aguardando aprovação humana | trace_id={trace_id}")
     
     try:
-        # Prote├º├úo contra loops infinitos
+        # Proteção contra loops infinitos
         tentativas = state.get("tentativas_approval", 0)
         max_tentativas = 3
         
@@ -318,10 +312,10 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
         # Incrementa contador
         state["tentativas_approval"] = tentativas + 1
         
-        # Em produ├º├úo, integraria com UI/API para aprova├º├úo
-        # Por enquanto, simula aprova├º├úo autom├ítica para teste
+        # Em produção, integraria com UI/API para aprovação
+        # Por enquanto, simula aprovação automática para teste
         state["ficha_triagem"]["status_aprovacao"] = "aprovado"
-        state["ficha_triagem"]["observacoes"] = "Aprovado automaticamente para demonstra├º├úo"
+        state["ficha_triagem"]["observacoes"] = "Aprovado automaticamente para demonstração"
         
         novo_historico = state["historico_chat"].copy()
         novo_historico.append({
@@ -335,14 +329,14 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
         state["historico_chat"] = novo_historico
         
         logger.info(
-            f"[NODE_HUMAN_IN_THE_LOOP] Aprova├º├úo processada | "
+            f"[NODE_HUMAN_IN_THE_LOOP] Aprovação processada | "
             f"status={state['ficha_triagem']['status_aprovacao']} | "
             f"tentativa={state['tentativas_approval']} | trace_id={trace_id}"
         )
         
     except Exception as e:
         logger.error(
-            f"[NODE_HUMAN_IN_THE_LOOP] Erro durante aprova├º├úo | "
+            f"[NODE_HUMAN_IN_THE_LOOP] Erro durante aprovação | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
         raise
@@ -352,7 +346,7 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
 
 def node_finalizacao(state: AcolhimentoState) -> AcolhimentoState:
     """
-    NODE 4B: Finaliza├º├úo do Fluxo
+    NODE 4B: Finalização do Fluxo
     """
     trace_id = _current_trace_id
     logger.info(f"[NODE_FINALIZACAO] Finalizando fluxo de acolhimento | trace_id={trace_id}")
@@ -377,7 +371,7 @@ def node_finalizacao(state: AcolhimentoState) -> AcolhimentoState:
         
     except Exception as e:
         logger.error(
-            f"[NODE_FINALIZACAO] Erro durante finaliza├º├úo | "
+            f"[NODE_FINALIZACAO] Erro durante finalização | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
         raise
@@ -390,28 +384,28 @@ def node_finalizacao(state: AcolhimentoState) -> AcolhimentoState:
 # ============================================================================
 
 def rota_condicional_prioridade(state: AcolhimentoState) -> str:
-    """Rota condicional baseada em n├¡vel de prioridade."""
+    """Rota condicional baseada em nível de prioridade."""
     ficha = state.get("ficha_triagem", {})
     prioridade = ficha.get("nivel_prioridade", "Baixa")
     
     trace_id = _current_trace_id
     
-    if prioridade in ["Alta", "M├®dia"]:
+    if prioridade in ["Alta", "Média"]:
         logger.info(
             f"[ROTA] Desviando para human-in-the-loop | "
-            f"prioridade={prioridade} (requer aprova├º├úo profissional) | trace_id={trace_id}"
+            f"prioridade={prioridade} (requer aprovação profissional) | trace_id={trace_id}"
         )
         return "node_human_in_the_loop"
     else:
         logger.info(
-            f"[ROTA] Desviando para finaliza├º├úo | "
+            f"[ROTA] Desviando para finalização | "
             f"prioridade={prioridade} (autonomia relativa) | trace_id={trace_id}"
         )
         return "node_finalizacao"
 
 
 def rota_pos_aprovacao(state: AcolhimentoState) -> str:
-    """Rota p├│s human-in-the-loop."""
+    """Rota pós human-in-the-loop."""
     ficha = state.get("ficha_triagem", {})
     status_approval = ficha.get("status_aprovacao", "pendente")
     
@@ -419,13 +413,13 @@ def rota_pos_aprovacao(state: AcolhimentoState) -> str:
     
     if status_approval == "aprovado":
         logger.info(
-            f"[ROTA] Aprova├º├úo concedida, prosseguindo para finaliza├º├úo | "
+            f"[ROTA] Aprovação concedida, prosseguindo para finalização | "
             f"trace_id={trace_id}"
         )
         return "node_finalizacao"
     else:
         logger.warning(
-            f"[ROTA] Aprova├º├úo rejeitada, encerrando fluxo | "
+            f"[ROTA] Aprovação rejeitada, encerrando fluxo | "
             f"status={status_approval} | trace_id={trace_id}"
         )
         return END
@@ -437,7 +431,7 @@ def rota_pos_aprovacao(state: AcolhimentoState) -> str:
 
 def criar_grafo_acolhimento():
     """
-    Constr├│i e compila o grafo LangGraph com todas as n├│s e rotas.
+    Constrói e compila o grafo LangGraph com todas as nós e rotas.
     
     Estrutura:
     1. node_extracao (sequencial)
@@ -447,13 +441,13 @@ def criar_grafo_acolhimento():
     5. Se human-in-the-loop: rota_pos_aprovacao -> node_finalizacao OU END
     
     Returns:
-        Grafo compilado e pronto para execu├º├úo
+        Grafo compilado e pronto para execução
     """
     
     # Cria StateGraph
     workflow = StateGraph(AcolhimentoState)
     
-    # Adiciona n├│s
+    # Adiciona nós
     workflow.add_node("node_extracao", node_extracao)
     workflow.add_node("node_rag_diretrizes", node_rag_diretrizes)
     workflow.add_node("node_mcp_territorio", node_mcp_territorio)
@@ -466,11 +460,11 @@ def criar_grafo_acolhimento():
     workflow.add_edge("node_extracao", "node_rag_diretrizes")
     workflow.add_edge("node_extracao", "node_mcp_territorio")
     
-    # Converge os n├│s paralelos para avalia├º├úo
+    # Converge os nós paralelos para avaliação
     workflow.add_edge("node_rag_diretrizes", "node_avaliacao_risco")
     workflow.add_edge("node_mcp_territorio", "node_avaliacao_risco")
     
-    # Rota condicional p├│s-avalia├º├úo
+    # Rota condicional pós-avaliação
     workflow.add_conditional_edges(
         "node_avaliacao_risco",
         rota_condicional_prioridade,
@@ -480,7 +474,7 @@ def criar_grafo_acolhimento():
         }
     )
     
-    # Rota p├│s-aprova├º├úo
+    # Rota pós-aprovação
     workflow.add_conditional_edges(
         "node_human_in_the_loop",
         rota_pos_aprovacao,
@@ -490,7 +484,7 @@ def criar_grafo_acolhimento():
         }
     )
     
-    # Finaliza├º├úo (sempre END)
+    # Finalização (sempre END)
     workflow.add_edge("node_finalizacao", END)
     
     # Compila o grafo
@@ -508,15 +502,15 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
     Executa o grafo de acolhimento com entrada tipada.
     
     Args:
-        entrada: Dict com id_paciente, relato, cep (ser├í validado como EntradaAcolhimento)
-        trace_id: ID de rastreabilidade (gerado se n├úo fornecido)
+        entrada: Dict com id_paciente, relato, cep (será validado como EntradaAcolhimento)
+        trace_id: ID de rastreabilidade (gerado se não fornecido)
     
     Returns:
-        Dict com resultado final (ficha de triagem e hist├│rico)
+        Dict com resultado final (ficha de triagem e histórico)
     """
     global _current_trace_id
     
-    # Gera trace_id se n├úo fornecido
+    # Gera trace_id se não fornecido
     if trace_id is None:
         trace_id = f"trace-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
     
@@ -525,7 +519,7 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
     # Setup logging
     setup_logging(trace_id)
     
-    logger.info(f"[EXEC] Iniciando execu├º├úo do grafo | trace_id={trace_id}")
+    logger.info(f"[EXEC] Iniciando execução do grafo | trace_id={trace_id}")
     
     try:
         # Valida entrada
@@ -533,7 +527,7 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
         logger.info(f"[EXEC] Entrada validada com sucesso | trace_id={trace_id}")
         
     except Exception as e:
-        logger.error(f"[EXEC] Erro na valida├º├úo de entrada | erro={str(e)} | trace_id={trace_id}")
+        logger.error(f"[EXEC] Erro na validação de entrada | erro={str(e)} | trace_id={trace_id}")
         raise
     
     # Cria estado inicial
@@ -551,12 +545,12 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
     # Cria e executa grafo
     grafo = criar_grafo_acolhimento()
     
-    logger.info(f"[EXEC] Grafo criado, iniciando execu├º├úo | trace_id={trace_id}")
+    logger.info(f"[EXEC] Grafo criado, iniciando execução | trace_id={trace_id}")
     
     # Executa grafo
     resultado = grafo.invoke(estado_inicial)
     
-    logger.info(f"[EXEC] Execu├º├úo conclu├¡da | trace_id={trace_id}")
+    logger.info(f"[EXEC] Execução concluída | trace_id={trace_id}")
     
     return {
         "trace_id": trace_id,
@@ -567,5 +561,5 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
     }
 
 
-# Vari├ível global para armazenar trace_id entre n├│s
+# Variável global para armazenar trace_id entre nós
 _current_trace_id: str = ""
