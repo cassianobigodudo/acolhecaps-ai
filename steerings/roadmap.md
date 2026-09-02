@@ -103,8 +103,8 @@
 
 ---
 
-### ⏳ Card 5: Controles de Segurança, Human-in-the-Loop e Prompt Injection
-**Status:** PARCIALMENTE CONCLUÍDO
+### ✅ Card 5: Controles de Segurança, Human-in-the-Loop e Prompt Injection
+**Status:** CONCLUÍDO
 
 **Descrição:** Implementar a interrupção manual para casos de alta prioridade/crise e validar defesas contra entradas maliciosas.
 
@@ -114,16 +114,23 @@
 - ✅ Human-in-the-loop para prioridades Alta e Média
 - ✅ Proteção contra prompt injection no relato
 - ✅ Bloqueio de CEPs malformados
-- ⏳ Relatório de segurança com cenários testados
+- ✅ Relatório de segurança com cenários testados
+- ✅ 18 testes E2E (100% passando)
+
+**Tecnologias:**
+- Validação Pydantic (regex patterns, keyword detection)
+- Tool MCP com normalização de CEP
+- LangGraph roteamento condicional (HITL)
+- Defesa em 4 camadas
 
 **Artefatos:**
 - `app/services/graph_service.py` - node_human_in_the_loop implementado
-- `tests/unit/test_mcp_territorial.py` - Testes de prompt injection
+- `tests/unit/test_security_e2e.py` - 18 testes E2E de segurança
+- `docs/SECURITY_REPORT.md` - Relatório completo de segurança
+- `tests/unit/test_mcp_territorial.py` - Testes de prompt injection (CEP)
 
-**Próximos Passos:**
-1. Criar cenário adversarial de teste completo
-2. Gerar relatório de bloqueios de prompt injection
-3. Documentar estratégia de segurança
+**Branch:** `feature/rag-checkpointer`
+**Commits:** `6b50d81`, `a603d32`
 
 ---
 
@@ -270,20 +277,19 @@
 ## 📊 Resumo de Progresso
 
 ```
-Cards Concluídos:      4/11 (36%)
-Cards Em Progresso:    1/11 (9%)
+Cards Concluídos:      5/11 (45%)
+Cards Em Progresso:    0/11 (0%)
 Cards Pendentes:       6/11 (55%)
 
-Total de Testes:       62/62 PASSING ✅
+Total de Testes:       80/80 PASSING ✅
 - MCP Territorial:     33/33 ✅
-- LangGraph:           17/17 ✅  (incluídos em test_llm_service)
+- LangGraph:           17/17 ✅
 - RAG Service:         29/29 ✅
+- Security E2E:        18/18 ✅
 
-Commits Atômicos:      12+
-Branches Ativas:       3
-  - feature/arquitetura-escopo (base)
-  - feature/mcp-validacao-territorial (concluída)
-  - feature/rag-checkpointer (atual)
+Commits Atômicos:      16+ (incluindo Card 4 + Card 5)
+Branches Ativas:       1
+  - feature/rag-checkpointer (contém Card 4 + 5)
 ```
 
 ---
@@ -291,18 +297,17 @@ Branches Ativas:       3
 ## 🎯 Prioridade Recomendada
 
 **Curto Prazo (Próximos):**
-1. Card 4 - RAG + Checkpointer (suporta Card 5)
-2. Card 7 - Testes de Integração E2E
-3. Card 6 - Logs estruturados completos
+1. Card 7 - Testes de Integração E2E (suporta avaliação)
+2. Card 11 - Documentação final + Vídeo (entrega final)
+3. Card 6 - Logs estruturados completos (observabilidade)
 
 **Médio Prazo:**
-4. Card 5 - Finalizações de segurança
-5. Card 8 - CI/CD Pipeline
-6. Card 9 - Anomalia detection
+4. Card 8 - CI/CD Pipeline
+5. Card 9 - Anomalia detection
+6. Card 10 - Low-Code alertas
 
-**Longo Prazo:**
-7. Card 10 - Low-Code alertas
-8. Card 11 - Documentação final
+**Longo Prazo (Documentação/Refinamento):**
+7. Refinements e ajustes finais
 
 ---
 
