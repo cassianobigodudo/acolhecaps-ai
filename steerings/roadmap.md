@@ -134,8 +134,8 @@
 
 ---
 
-### ⏳ Card 6: Observabilidade e Logs Estruturados Correlacionados
-**Status:** PARCIALMENTE CONCLUÍDO
+### ✅ Card 6: Observabilidade e Logs Estruturados Correlacionados
+**Status:** CONCLUÍDO
 
 **Descrição:** Instrumentar a aplicação para emitir logs estruturados em JSON contendo trace_id correlacionado a métricas de execução.
 
@@ -145,16 +145,25 @@
 - ✅ Logs em JSON estruturado em todos os nós
 - ✅ Trace_id correlacionado (gerado automaticamente)
 - ✅ Timestamps ISO em cada operação
-- ⏳ Arquivo de log com traces completos de uma requisição
+- ✅ Arquivo de log com traces completos de uma requisição
+- ✅ Métricas de latência capturadas
+- ✅ Padrão de observabilidade documentado
+
+**Tecnologias:**
+- JSON logging estruturado com StructuredJSONFormatter
+- RequestContext para gerenciar trace_id em stack
+- ObservabilityLogAggregator para análise end-to-end
+- 16 testes E2E (100% passando)
 
 **Artefatos:**
+- `app/services/observability.py` - Infraestrutura centralizada (260 linhas)
+- `tests/unit/test_observability_e2e.py` - Suite de testes (16 testes)
+- `docs/OBSERVABILITY_PATTERN.md` - Padrão de observabilidade com exemplos
 - `app/services/graph_service.py` - Logging integrado
 - `app/services/mcp_territorial_tool.py` - Logs estruturados com metadata
 
-**Próximos Passos:**
-1. Criar log file com saída de requisição end-to-end
-2. Adicionar métricas de latência
-3. Documentar padrão de observabilidade
+**Branch:** `feature/rag-checkpointer`
+**Commits:** `7eca374`
 
 ---
 
@@ -277,19 +286,20 @@
 ## 📊 Resumo de Progresso
 
 ```
-Cards Concluídos:      5/11 (45%)
+Cards Concluídos:      6/11 (55%)
 Cards Em Progresso:    0/11 (0%)
-Cards Pendentes:       6/11 (55%)
+Cards Pendentes:       5/11 (45%)
 
-Total de Testes:       80/80 PASSING ✅
+Total de Testes:       96/96 PASSING ✅
 - MCP Territorial:     33/33 ✅
 - LangGraph:           17/17 ✅
 - RAG Service:         29/29 ✅
 - Security E2E:        18/18 ✅
+- Observability E2E:   16/16 ✅
 
-Commits Atômicos:      16+ (incluindo Card 4 + Card 5)
+Commits Atômicos:      17+ (incluindo Cards 1-6)
 Branches Ativas:       1
-  - feature/rag-checkpointer (contém Card 4 + 5)
+  - feature/rag-checkpointer (contém Cards 4, 5, 6)
 ```
 
 ---
@@ -299,15 +309,14 @@ Branches Ativas:       1
 **Curto Prazo (Próximos):**
 1. Card 7 - Testes de Integração E2E (suporta avaliação)
 2. Card 11 - Documentação final + Vídeo (entrega final)
-3. Card 6 - Logs estruturados completos (observabilidade)
+3. Card 8 - CI/CD Pipeline (automação)
 
 **Médio Prazo:**
-4. Card 8 - CI/CD Pipeline
-5. Card 9 - Anomalia detection
-6. Card 10 - Low-Code alertas
+4. Card 9 - Anomalia detection
+5. Card 10 - Low-Code alertas
 
 **Longo Prazo (Documentação/Refinamento):**
-7. Refinements e ajustes finais
+6. Refinements e ajustes finais
 
 ---
 
