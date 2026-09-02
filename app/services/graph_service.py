@@ -17,10 +17,12 @@ from typing import TypedDict, List, Optional, Any, Literal
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 
 from app.models import EntradaAcolhimento, FichaTriagemCAPS, EstadoAcolhimento
 from app.services.llm_service import get_groq_llm
 from app.services.mcp_territorial_tool import obter_tool_territorial
+from app.services.rag_service import obter_rag_service
 import asyncio
 
 
@@ -124,23 +126,40 @@ def node_extracao(state: AcolhimentoState) -> AcolhimentoState:
 
 
 def node_rag_diretrizes(state: AcolhimentoState) -> dict:
-    """NODE 2A: Busca em RAG (Diretrizes Clínicas)"""
+    """NODE 2A: Busca semântica em RAG (Diretrizes Clínicas do Ministério da Saúde)"""
     trace_id = _current_trace_id
     logger.info(f"[NODE_RAG_DIRETRIZES] Iniciando busca em diretrizes | trace_id={trace_id}")
     
     try:
-        contexto_rag = "Diretrizes para Ansiedade: Avaliação de sintomatologia..."
+        entrada = state["entrada"]
+        relato = entrada.get("relato", "")
+        
+        # Obtém o RAG Service (singleton, já indexado)
+        rag = obter_rag_service(trace_id=trace_id)
+        
+        # Recupera contexto relevante para o relato
+        resultado = rag.recuperar_contexto(relato, top_k=3)
+        
+        if resultado["sucesso"] and resultado["documentos"]:
+            contexto_rag = "\n".join([
+                f"[{doc['prioridade'].upper()}] {doc['conteudo']}"
+                for doc in resultado["documentos"]
+            ])
+        else:
+            # Fallback: contexto genérico se RAG falhar
+            contexto_rag = "Diretrizes gerais: Avaliar sintomas, histórico e contexto socioeconômico do paciente."
         
         logger.info(
-            f"[NODE_RAG_DIRETRIZES] Contexto recuperado | "
-            f"comprimento={len(contexto_rag)} | trace_id={trace_id}"
+            f"[NODE_RAG_DIRETRIZES] Contexto recuperado via RAG | "
+            f"documentos={resultado.get('total', 0)} | "
+            f"fallback={resultado.get('fallback', False)} | trace_id={trace_id}"
         )
         
         return {"contexto_rag": contexto_rag}
         
     except Exception as e:
         logger.error(f"[NODE_RAG_DIRETRIZES] Erro | erro={str(e)} | trace_id={trace_id}")
-        return {"contexto_rag": None}
+        return {"contexto_rag": "Erro ao recuperar diretrizes. Avaliação manual recomendada."}
 
 
 def node_mcp_territorio(state: AcolhimentoState) -> dict:
@@ -487,8 +506,9 @@ def criar_grafo_acolhimento():
     # Finalização (sempre END)
     workflow.add_edge("node_finalizacao", END)
     
-    # Compila o grafo
-    compiled_graph = workflow.compile()
+    # Compila o grafo com MemorySaver para persistência de sessão
+    checkpointer = MemorySaver()
+    compiled_graph = workflow.compile(checkpointer=checkpointer)
     
     return compiled_graph
 
@@ -547,8 +567,11 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
     
     logger.info(f"[EXEC] Grafo criado, iniciando execução | trace_id={trace_id}")
     
+    # Config de thread para checkpointer (persistência de sessão)
+    config = {"configurable": {"thread_id": trace_id}}
+    
     # Executa grafo
-    resultado = grafo.invoke(estado_inicial)
+    resultado = grafo.invoke(estado_inicial, config=config)
     
     logger.info(f"[EXEC] Execução concluída | trace_id={trace_id}")
     
