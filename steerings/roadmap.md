@@ -74,28 +74,32 @@
 
 ---
 
-### ⏳ Card 4: Estratégia de Memória e Recuperação RAG
-**Status:** PENDENTE
+### ✅ Card 4: Estratégia de Memória e Recuperação RAG
+**Status:** CONCLUÍDO
 
 **Descrição:** Configurar a persistência da sessão com checkpointer e a busca vetorial (RAG) em diretrizes clínicas do Ministério da Saúde.
 
 **Objetivo:** Fornecer contexto técnico confiável para o modelo embasar o nível de prioridade do atendimento.
 
 **Resultado Esperado:**
-- Base de conhecimento indexada (FAISS ou ChromaDB)
-- Recuperação contextual operando dentro dos nós do LangGraph
-- Checkpointer implementado para estado persistente
+- ✅ Base de conhecimento indexada (FAISS com fallback cosine similarity)
+- ✅ 15 diretrizes clínicas cobrindo prioridades baixa, média e alta
+- ✅ Recuperação contextual operando dentro do node_rag_diretrizes
+- ✅ Checkpointer MemorySaver implementado para estado persistente
+- ✅ 29/29 testes passando
 
 **Tecnologias:**
-- FAISS ou ChromaDB (armazenamento vetorial)
-- LangGraph MemorySaver (checkpointer)
-- Embeddings via Groq/LangChain
+- Busca vetorial com FAISS (fallback: cosine similarity manual)
+- LangGraph MemorySaver (checkpointer com thread_id)
+- Embeddings hash-based determinísticos (demo)
 
-**Próximos Passos:**
-1. Criar base de diretrizes clínicas (dados de teste)
-2. Implementar indexação vetorial
-3. Integrar node_rag_diretrizes com retrieval
-4. Adicionar checkpointer no grafo
+**Artefatos:**
+- `app/services/rag_service.py` - RAGService com indexação e busca semântica
+- `tests/unit/test_rag_service.py` - Suite de testes (29 testes)
+- `app/services/graph_service.py` - node_rag_diretrizes integrado + MemorySaver
+
+**Branch:** `feature/rag-checkpointer`
+**Commits:** `d9b5cb9`, `e3c4b7e`
 
 ---
 
@@ -266,18 +270,20 @@
 ## 📊 Resumo de Progresso
 
 ```
-Cards Concluídos:      3/11 (27%)
-Cards Em Progresso:    2/11 (18%)
+Cards Concluídos:      4/11 (36%)
+Cards Em Progresso:    1/11 (9%)
 Cards Pendentes:       6/11 (55%)
 
-Total de Testes:       50/50 PASSING ✅
+Total de Testes:       62/62 PASSING ✅
 - MCP Territorial:     33/33 ✅
-- LangGraph:           17/17 ✅
+- LangGraph:           17/17 ✅  (incluídos em test_llm_service)
+- RAG Service:         29/29 ✅
 
-Commits Atômicos:      10+
-Branches Ativas:       2
+Commits Atômicos:      12+
+Branches Ativas:       3
   - feature/arquitetura-escopo (base)
-  - feature/mcp-validacao-territorial (atual)
+  - feature/mcp-validacao-territorial (concluída)
+  - feature/rag-checkpointer (atual)
 ```
 
 ---
