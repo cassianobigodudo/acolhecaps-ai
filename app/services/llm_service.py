@@ -185,7 +185,43 @@ Pontos-chave:
 
         prompt = f"""
 {contexto_part}
-Avalie o relato seguinte e determine o nível de prioridade de triagem.
+CRITÉRIOS DE CLASSIFICAÇÃO PARA TRIAGEM EM CAPS:
+
+PRIORIDADE CRÍTICA (risco iminente):
+- Ideação/tentativa de suicídio ATIVA com plano definido
+- Ideação/tentativa de homicídio ativa
+- Psicose desorganizada ou catatonia
+- Intoxicação ou abuso de substância grave
+- Risco imediato de dano a si ou outros
+
+PRIORIDADE ALTA (risco significativo):
+- Ideação suicida/homicida sem plano específico mas com intenção
+- História prévia de tentativa de suicídio
+- Episódio maníaco ou transtorno bipolar não controlado
+- Transtorno de personalidade borderline com comportamento destrutivo
+- Alucinações ou delírios persecutórios
+- Abuso de substância com comprometimento importante
+- Depressão severa com sintomas incapacitantes
+
+PRIORIDADE MÉDIA (sofrimento psíquico moderado):
+- Ansiedade generalizada com impacto na vida diária
+- Depressão leve a moderada COM comprometimento funcional
+- Depressão CRÔNICA (indústria, falta de energia, absenteísmo)
+- Transtorno de relacionamento significativo
+- Histórico de trauma não resolvido
+- Stress ocupacional severo
+- Pacientes que já fazem ou fizeram tratamento psicológico
+- Isolamento social moderado
+
+PRIORIDADE BAIXA (sofrimento mínimo):
+- Dificuldades de adaptação leves e transitórias
+- Preocupações situacionais normais (luto recente, mudança de vida)
+- Queixa somática sem clareza de causa psicológica
+- Pacientes com suporte adequado e funcionamento preservado
+
+---
+
+Avalie o relato seguinte RIGOROSAMENTE segundo os critérios acima:
 
 Relato:
 {relato}
@@ -193,6 +229,9 @@ Relato:
 Responda EXATAMENTE no seguinte formato:
 PRIORIDADE: [Alta|Média|Baixa]
 FATORES_RISCO: [fator1, fator2, fator3]
+
+IMPORTANTE: Depressão crônica é SEMPRE Média ou superior. Isolamento social é sinal de Média. 
+Absenteísmo do trabalho indica comprometimento funcional = Média no mínimo.
 
 Resposta:
 """
