@@ -10,10 +10,7 @@ from datetime import datetime
 
 import pytest
 
-from app.services.mcp_territorial_tool import (
-    MCPTerritorialTool,
-    obter_tool_territorial,
-)
+from app.services.mcp_territorial_tool import MCPTerritorialTool, obter_tool_territorial
 
 
 class TestMCPTerritorialValidacao:

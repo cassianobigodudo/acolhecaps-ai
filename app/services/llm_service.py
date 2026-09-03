@@ -126,9 +126,7 @@ class GroqLLM:
 
             resposta = message.choices[0].message.content
 
-            tokens_info = (
-                message.usage.total_tokens if message.usage else "N/A"
-            )
+            tokens_info = message.usage.total_tokens if message.usage else "N/A"
             logger.info(
                 f"[GROQ] Resposta recebida com sucesso | "
                 f"tokens_usados={tokens_info} | "
