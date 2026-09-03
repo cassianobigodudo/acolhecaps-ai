@@ -24,52 +24,13 @@ logger = logging.getLogger(__name__)
 
 
 class DiretrizesClinicas:
-    """Base de diretrizes clínicas do Ministério da Saúde para CAPS."""
-
-    # Diretrizes para diferentes níveis de prioridade
-    DIRETRIZES = {
-        "baixa": [
-            "Transtornos de ansiedade leve: técnicas de respiração, mindfulness, "
-            "suporte em grupos de autoajuda",
-            "Stress relacionado a trabalho: orientação profissional, "
-            "relaxamento muscular, oficinas de resiliência",
-            "Sintomas de tristeza leve: acompanhamento psicossocial, "
-            "oficinas terapêuticas, suporte familiar",
-            "Insônia moderada: higiene do sono, meditação guiada, "
-            "atividades recreativas estruturadas",
-        ],
-        "media": [
-            "Transtornos de ansiedade moderada: psicoterapia cognitivo-comportamental, "
-            "possível farmacoterapia",
-            "Depressão leve a moderada: acompanhamento psicológico regular, "
-            "intervenções psicossociais",
-            "Sintomas obsessivo-compulsivos: exposição e prevenção de resposta (EPR), "
-            "suporte multiprofissional",
-            "Abuso de substâncias inicial: avaliação de dependência, "
-            "psicoeducação, redução de danos",
-            "Crises de pânico: técnicas de controle de respiração, "
-            "exposição gradual, TCC especializada",
-        ],
-        "alta": [
-            "Risco de autolesão ou suicídio: avaliação imediata, "
-            "acompanhamento psiquiátrico diário, plano de segurança",
-            "Psicose aguda: encaminhamento para serviço especializado, "
-            "possível internação, medicação antipsicótica",
-            "Crise de ansiedade severa: intervenção em crise, medicação ansiosa, "
-            "acompanhamento contínuo",
-            "Risco de violência: avaliação forense, medidas de proteção, "
-            "envolvimento de segurança pública",
-            "Surto maníaco ou depressivo severo: internação, medicalização urgente, "
-            "acompanhamento psiquiátrico",
-            "Ideação suicida com plano: encaminhamento imediato, monitoramento 24h, "
-            "envolvimento de profissional urgentista",
-        ],
-    }
-
-    @classmethod
-    def obter_por_prioridade(cls, prioridade: str) -> List[str]:
-        """Obtém diretrizes por nível de prioridade."""
-        return cls.DIRETRIZES.get(prioridade.lower(), [])
+    """
+    DEPRECATED: Substituído pelo protocolo PDF oficial.
+    
+    As diretrizes agora vêm exclusivamente de:
+    docs/PROTOCOLO -CLASSIFICACAO-DE-RISCO-EM-SAUDE-MENTAL.pdf
+    """
+    DIRETRIZES = {}
 
 
 class RAGService:
@@ -118,7 +79,10 @@ class RAGService:
 
     def indexar_diretrizes(self) -> Dict:
         """
-        Indexa as diretrizes clínicas em FAISS.
+        Indexa as diretrizes clínicas a partir do PDF protocolo.
+        
+        NOTA: As diretrizes hardcoded foram removidas.
+        Apenas o PDF será indexado.
 
         Returns:
             Dicionário com status da indexação
@@ -128,22 +92,30 @@ class RAGService:
                 {
                     "trace_id": self.trace_id,
                     "evento": "indexacao_iniciada",
+                    "fonte": "PDF protocolo",
                     "timestamp": self._timestamp_iso(),
                 }
             )
         )
 
         try:
-            # Coletar todas as diretrizes
-            todos_docs = []
-            for prioridade in ["baixa", "media", "alta"]:
-                diretrizes = DiretrizesClinicas.obter_por_prioridade(prioridade)
-                for diretriz in diretrizes:
-                    todos_docs.append({"conteudo": diretriz, "prioridade": prioridade})
+            # Não indexar diretrizes hardcoded - apenas PDF
+            if not self.documents:
+                logger.warning(
+                    json.dumps(
+                        {
+                            "trace_id": self.trace_id,
+                            "evento": "nenhum_documento_para_indexar",
+                            "mensagem": "Aguardando carregamento do PDF",
+                            "timestamp": self._timestamp_iso(),
+                        }
+                    )
+                )
+                return {"sucesso": True, "total_documentos": 0, "status": "aguardando_pdf"}
 
-            # Gerar embeddings simples (hash-based para demo)
+            # Gerar embeddings dos documentos existentes
             embeddings = np.array(
-                [self._gerar_embedding_simples(doc["conteudo"]) for doc in todos_docs],
+                [self._gerar_embedding_simples(doc["conteudo"]) for doc in self.documents],
                 dtype=np.float32,
             )
 
@@ -154,7 +126,6 @@ class RAGService:
                 self.index = faiss.IndexFlatL2(self.dimensao_embedding)
                 self.index.add(embeddings)
             except ImportError:
-                # Fallback: usar índice em memória
                 logger.warning(
                     json.dumps(
                         {
@@ -166,7 +137,6 @@ class RAGService:
                 )
                 self.index = None
 
-            self.documents = todos_docs
             self.embeddings_cache = {i: embeddings[i] for i in range(len(embeddings))}
 
             logger.info(
@@ -174,13 +144,13 @@ class RAGService:
                     {
                         "trace_id": self.trace_id,
                         "evento": "indexacao_concluida",
-                        "total_documentos": len(todos_docs),
+                        "total_documentos": len(self.documents),
                         "timestamp": self._timestamp_iso(),
                     }
                 )
             )
 
-            return {"sucesso": True, "total_documentos": len(todos_docs), "status": "indexado"}
+            return {"sucesso": True, "total_documentos": len(self.documents), "status": "indexado"}
 
         except Exception as e:
             logger.error(
@@ -456,26 +426,37 @@ def obter_rag_service(trace_id: Optional[str] = None) -> RAGService:
     """
     Obtém ou cria a instância do RAG Service (singleton).
     
-    Carrega automaticamente:
-    1. Diretrizes clínicas hardcoded
-    2. PDF de protocolo se existir em docs/
+    NOTA: Agora carrega APENAS o PDF protocolo oficial.
+    As diretrizes hardcoded foram removidas.
 
     Args:
         trace_id: ID único para correlação de logs
 
     Returns:
         Instância de RAGService
+        
+    Raises:
+        FileNotFoundError: Se o PDF protocolo não existir
     """
     global _rag_singleton
     if _rag_singleton is None:
         _rag_singleton = RAGService(trace_id=trace_id)
-        _rag_singleton.indexar_diretrizes()
         
-        # Tentar carregar PDF de protocolo se existir
+        # Buscar PDF do protocolo
         pdf_protocolo = Path(__file__).parent.parent.parent / "docs" / "PROTOCOLO -CLASSIFICACAO-DE-RISCO-EM-SAUDE-MENTAL.pdf"
-        if pdf_protocolo.exists():
-            logger.info(f"Carregando PDF de protocolo: {pdf_protocolo}")
-            resultado = _rag_singleton.carregar_pdf_protocolo(str(pdf_protocolo))
-            logger.info(f"Resultado do carregamento: {resultado}")
+        
+        if not pdf_protocolo.exists():
+            raise FileNotFoundError(
+                f"Protocolo não encontrado em {pdf_protocolo}\n"
+                f"Por favor, adicione o PDF em: docs/PROTOCOLO -CLASSIFICACAO-DE-RISCO-EM-SAUDE-MENTAL.pdf"
+            )
+        
+        logger.info(f"Carregando protocolo oficial do RAG: {pdf_protocolo}")
+        resultado = _rag_singleton.carregar_pdf_protocolo(str(pdf_protocolo))
+        
+        if not resultado.get("sucesso"):
+            raise ValueError(f"Erro ao carregar protocolo: {resultado.get('erro')}")
+        
+        logger.info(f"Protocolo carregado com sucesso: {resultado}")
     
     return _rag_singleton
