@@ -16,10 +16,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
-from app.models.acolhimento import EntradaAcolhimento, FichaTriagemCAPS
+from app.models.acolhimento import EntradaAcolhimento, FichaTriagemCAPS, HITLAprovacao, HITLCorrecao
 from app.services.alert_service import obter_alert_service
 from app.services.observability import setup_observability_logger
 from app.services.graph_service import executar_acolhimento
+from app.services.hitl_manager import obter_hitl_manager
 
 # Carregar variáveis de ambiente do .env
 load_dotenv()
@@ -112,6 +113,7 @@ async def criar_acolhimento(entrada: EntradaAcolhimento):
         - status: sucesso ou erro
         - ficha_triagem: FichaTriagemCAPS com resultado
         - trace_id: ID para rastreabilidade
+        - requer_aprovacao_humana: bool indicando se precisa de HITL
     
     Raises:
         - 400: Validação de entrada falhou
@@ -139,6 +141,7 @@ async def criar_acolhimento(entrada: EntradaAcolhimento):
             "status": "sucesso",
             "ficha_triagem": resultado["ficha_triagem"],
             "trace_id": resultado["trace_id"],
+            "requer_aprovacao_humana": resultado["ficha_triagem"].get("status_aprovacao") == "pendente",
         }
 
     except ValidationError as e:
@@ -156,6 +159,146 @@ async def criar_acolhimento(entrada: EntradaAcolhimento):
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao processar acolhimento: {str(e)}",
+        )
+
+
+@app.post("/acolhimento/hitl")
+async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
+    """
+    Responde a uma ficha em estado HITL (Human-in-the-Loop).
+    
+    Profissional pode:
+    1. APROVAR a classificação da IA (usar HITLAprovacao)
+    2. CORRIGIR a classificação (usar HITLCorrecao)
+    
+    Request Body:
+        - trace_id: str (ID retornado em POST /acolhimento)
+        - status_aprovacao: "aprovado" ou "corrigido"
+        - Para aprovação: observacoes, profissional_nome, profissional_profissao (opcional)
+        - Para correção: nivel_prioridade_corrigido, novo_encaminhamento (opcional), etc
+    
+    Returns:
+        - status: sucesso ou erro
+        - ficha_triagem: Ficha atualizada com decisão profissional
+        - trace_id: ID da triagem
+    
+    Raises:
+        - 404: Ficha pendente não encontrada
+        - 400: Validação falhou
+        - 500: Erro ao processar
+    """
+    try:
+        trace_id = hitl_request.trace_id
+        status_aprovacao = hitl_request.status_aprovacao
+        
+        logger.info(
+            f"[HITL] Recebido POST /acolhimento/hitl | "
+            f"trace_id={trace_id} | "
+            f"acao={status_aprovacao}"
+        )
+        
+        # Obtém manager
+        hitl_manager = obter_hitl_manager()
+        
+        # Verifica se ficha pendente existe
+        ficha = hitl_manager.obter_ficha_pendente(trace_id)
+        if not ficha:
+            logger.warning(
+                f"[HITL] Ficha pendente não encontrada | trace_id={trace_id}"
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=f"Ficha pendente não encontrada para trace_id: {trace_id}"
+            )
+        
+        # Processa aprovação ou correção
+        if isinstance(hitl_request, HITLAprovacao):
+            logger.info(
+                f"[HITL] Processando APROVAÇÃO | trace_id={trace_id} | "
+                f"profissional={hitl_request.profissional_nome}"
+            )
+            
+            ficha_atualizada = hitl_manager.aprovar_ficha(
+                trace_id=trace_id,
+                profissional_nome=hitl_request.profissional_nome,
+                profissional_profissao=hitl_request.profissional_profissao,
+                observacoes=hitl_request.observacoes,
+            )
+            
+        else:  # HITLCorrecao
+            logger.info(
+                f"[HITL] Processando CORREÇÃO | trace_id={trace_id} | "
+                f"prioridade={ficha.get('nivel_prioridade')} → "
+                f"{hitl_request.nivel_prioridade_corrigido} | "
+                f"profissional={hitl_request.profissional_nome}"
+            )
+            
+            ficha_atualizada = hitl_manager.corrigir_ficha(
+                trace_id=trace_id,
+                nivel_prioridade_corrigido=hitl_request.nivel_prioridade_corrigido,
+                profissional_nome=hitl_request.profissional_nome,
+                profissional_profissao=hitl_request.profissional_profissao,
+                observacoes=hitl_request.observacoes,
+                novo_encaminhamento=hitl_request.novo_encaminhamento,
+            )
+        
+        logger.info(
+            f"[HITL] Processamento concluído com sucesso | "
+            f"trace_id={trace_id} | "
+            f"status={ficha_atualizada.get('status_aprovacao')} | "
+            f"prioridade_final={ficha_atualizada.get('nivel_prioridade')}"
+        )
+        
+        return {
+            "status": "sucesso",
+            "trace_id": trace_id,
+            "ficha_triagem": ficha_atualizada,
+        }
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"[HITL] Erro de validação | erro={str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[HITL] Erro ao processar HITL | erro={str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao processar HITL: {str(e)}",
+        )
+
+
+@app.get("/acolhimento/hitl/pendentes")
+async def listar_fichas_pendentes():
+    """
+    Lista todas as fichas em estado HITL (aguardando aprovação profissional).
+    
+    Útil para dashboard de profissionais verem quais fichas precisam de revisão.
+    
+    Returns:
+        - status: sucesso
+        - fichas_pendentes: Dict[trace_id] -> ficha_triagem
+        - total: Número de fichas pendentes
+    """
+    try:
+        hitl_manager = obter_hitl_manager()
+        fichas_pendentes = hitl_manager.listar_fichas_pendentes()
+        
+        logger.info(
+            f"[HITL] Listando fichas pendentes | total={len(fichas_pendentes)}"
+        )
+        
+        return {
+            "status": "sucesso",
+            "fichas_pendentes": fichas_pendentes,
+            "total": len(fichas_pendentes),
+        }
+        
+    except Exception as e:
+        logger.error(f"[HITL] Erro ao listar pendentes | erro={str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao listar fichas pendentes: {str(e)}",
         )
 
 

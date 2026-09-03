@@ -178,3 +178,98 @@ class EstadoAcolhimento(BaseModel):
                 "requer_aprovacao_humana": False,
             }
         }
+
+
+class HITLAprovacao(BaseModel):
+    """
+    Schema para APROVAR uma ficha em HITL.
+    
+    Sent by professional to approve the AI classification.
+    """
+    trace_id: str = Field(
+        ..., 
+        description="ID único da triagem (trace_id retornado em POST /acolhimento)"
+    )
+    status_aprovacao: Literal["aprovado"] = Field(
+        ..., 
+        description="Deve ser 'aprovado'"
+    )
+    observacoes: Optional[str] = Field(
+        default=None, 
+        description="Observações da aprovação"
+    )
+    profissional_nome: Optional[str] = Field(
+        default=None, 
+        description="Nome do profissional que aprovou",
+        max_length=100
+    )
+    profissional_profissao: Optional[str] = Field(
+        default=None, 
+        description="Profissão do profissional (Psicólogo, Psiquiatra, etc)",
+        max_length=100
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "trace_id": "trace-20240115101520-abc12345",
+                "status_aprovacao": "aprovado",
+                "observacoes": "Classificação validada pelo profissional",
+                "profissional_nome": "Dr. Silva",
+                "profissional_profissao": "Psicólogo",
+            }
+        }
+
+
+class HITLCorrecao(BaseModel):
+    """
+    Schema para CORRIGIR uma ficha em HITL.
+    
+    Sent by professional to correct the AI classification.
+    Professional may increase or decrease priority.
+    """
+    trace_id: str = Field(
+        ..., 
+        description="ID único da triagem (trace_id retornado em POST /acolhimento)"
+    )
+    status_aprovacao: Literal["corrigido"] = Field(
+        ..., 
+        description="Deve ser 'corrigido'"
+    )
+    nivel_prioridade_corrigido: Literal["Alta", "Média", "Baixa"] = Field(
+        ..., 
+        description="Nova prioridade (pode ser maior ou menor que a classificação da IA)"
+    )
+    observacoes: Optional[str] = Field(
+        default=None, 
+        description="Motivo da correção",
+        max_length=500
+    )
+    novo_encaminhamento: Optional[str] = Field(
+        default=None, 
+        description="Novo encaminhamento (opcional, sobrescreve a recomendação da IA)",
+        max_length=200
+    )
+    profissional_nome: Optional[str] = Field(
+        default=None, 
+        description="Nome do profissional que corrigiu",
+        max_length=100
+    )
+    profissional_profissao: Optional[str] = Field(
+        default=None, 
+        description="Profissão do profissional (Psicólogo, Assistente Social, etc)",
+        max_length=100
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "trace_id": "trace-20240115101520-abc12345",
+                "status_aprovacao": "corrigido",
+                "nivel_prioridade_corrigido": "Alta",
+                "observacoes": "IA subestimou o risco. Paciente com ideação suicida ativa.",
+                "novo_encaminhamento": "Psiquiatra + Psicólogo (URGENTE)",
+                "profissional_nome": "Dra. Rosa",
+                "profissional_profissao": "Assistente Social",
+            }
+        }

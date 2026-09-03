@@ -1,0 +1,100 @@
+{
+  "info": {
+    "name": "AcolheCAPS HITL Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Triagem Baixa Prioridade",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id_paciente\": \"PAC-LOW-001\", \"relato\": \"Ansiedade leve, sem sintomas graves\", \"cep\": \"88015-100\"}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/acolhimento",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["acolhimento"]
+        }
+      }
+    },
+    {
+      "name": "2. Triagem Média Prioridade (HITL)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id_paciente\": \"PAC-MED-001\", \"relato\": \"Depressão há 2 meses, absenteísmo laboral\", \"cep\": \"88015-100\"}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/acolhimento",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["acolhimento"]
+        }
+      }
+    },
+    {
+      "name": "3. HITL - Aprovar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"trace_id\": \"substitua-com-trace-id-real\", \"status_aprovacao\": \"aprovado\", \"observacoes\": \"Classificação validada\"}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/acolhimento/hitl",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["acolhimento", "hitl"]
+        }
+      }
+    },
+    {
+      "name": "4. HITL - Corrigir",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"trace_id\": \"substitua-com-trace-id-real\", \"status_aprovacao\": \"corrigido\", \"nivel_prioridade_corrigido\": \"Alta\", \"observacoes\": \"IA subestimou\", \"profissional_nome\": \"Dr. Silva\", \"profissional_profissao\": \"Psicólogo\"}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/acolhimento/hitl",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["acolhimento", "hitl"]
+        }
+      }
+    }
+  ]
+}
