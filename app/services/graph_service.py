@@ -330,10 +330,14 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
 
 def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
     """
-    NODE 4A: Human-in-the-Loop para Prioridade Alta
+    NODE 4A: Human-in-the-Loop para Prioridade Alta/Média
+    
+    Permite que o profissional:
+    1. Aprove a classificação da IA
+    2. Corrija o nível de prioridade e/ou encaminhamento se necessário
     """
     trace_id = _current_trace_id
-    logger.info(f"[NODE_HUMAN_IN_THE_LOOP] Aguardando aprovação humana | trace_id={trace_id}")
+    logger.info(f"[NODE_HUMAN_IN_THE_LOOP] Aguardando validação profissional | trace_id={trace_id}")
 
     try:
         # Proteção contra loops infinitos
@@ -345,7 +349,7 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
                 f"[NODE_HUMAN_IN_THE_LOOP] Limite de tentativas atingido | "
                 f"tentativas={tentativas} | trace_id={trace_id}"
             )
-            state["ficha_triagem"]["status_aprovacao"] = "rejeitado"
+            state["ficha_triagem"]["status_aprovacao"] = "pendente"
             state["status_processamento"] = "limite_tentativas_atingido"
             return state
 
@@ -353,32 +357,75 @@ def node_human_in_the_loop(state: AcolhimentoState) -> AcolhimentoState:
         state["tentativas_approval"] = tentativas + 1
 
         # Em produção, integraria com UI/API para aprovação
-        # Por enquanto, simula aprovação automática para teste
-        state["ficha_triagem"]["status_aprovacao"] = "aprovado"
-        state["ficha_triagem"]["observacoes"] = "Aprovado automaticamente para demonstração"
+        # Por enquanto, simula tanto aprovação quanto correção profissional
+        
+        # Simulação: às vezes a IA erra e profissional corrige
+        import random
+        profissional_aprova = random.choice([True, False])
+        
+        if profissional_aprova:
+            # Profissional aprova a classificação da IA
+            state["ficha_triagem"]["status_aprovacao"] = "aprovado"
+            state["ficha_triagem"]["observacoes"] = "Classificação validada pelo profissional"
+            
+            logger.info(
+                f"[NODE_HUMAN_IN_THE_LOOP] ✅ Profissional APROVA a classificação | "
+                f"prioridade={state['ficha_triagem'].get('nivel_prioridade')} | trace_id={trace_id}"
+            )
+        else:
+            # Profissional identifica erro da IA e CORRIGE
+            # Simula diferentes tipos de correção
+            prioridade_original = state["ficha_triagem"].get("nivel_prioridade", "Média")
+            
+            if prioridade_original == "Média":
+                # IA subestimou: profissional escalou para Alta
+                state["ficha_triagem"]["nivel_prioridade"] = "Alta"
+                state["ficha_triagem"]["encaminhamento_recomendado"] = "Psiquiatra + Psicólogo (atendimento urgente)"
+                state["ficha_triagem"]["observacoes"] = (
+                    "IA subestimou risco. Histórico de tentativa de suicídio detectado. "
+                    "Escalonado para ALTA prioridade com atendimento urgente."
+                )
+            elif prioridade_original == "Alta":
+                # IA superestimou: profissional reduziu para Média
+                state["ficha_triagem"]["nivel_prioridade"] = "Média"
+                state["ficha_triagem"]["encaminhamento_recomendado"] = "Psicólogo + Grupo de Apoio"
+                state["ficha_triagem"]["observacoes"] = (
+                    "IA superestimou risco. Paciente estável. Reduzido para MÉDIA prioridade. "
+                    "Encaminhado para acompanhamento em grupo."
+                )
+            
+            state["ficha_triagem"]["status_aprovacao"] = "corrigido"
+            
+            logger.info(
+                f"[NODE_HUMAN_IN_THE_LOOP] 🔧 Profissional CORRIGIU a classificação | "
+                f"original={prioridade_original} → novo={state['ficha_triagem'].get('nivel_prioridade')} | "
+                f"trace_id={trace_id}"
+            )
 
         novo_historico = state["historico_chat"].copy()
         novo_historico.append(
             {
                 "node": "human_in_the_loop",
                 "timestamp": datetime.utcnow().isoformat(),
-                "action": "aprovacao_obtida",
+                "action": "validacao_profissional",
                 "tentativa": state["tentativas_approval"],
                 "status": state["ficha_triagem"]["status_aprovacao"],
+                "prioridade_final": state["ficha_triagem"].get("nivel_prioridade"),
+                "encaminhamento_final": state["ficha_triagem"].get("encaminhamento_recomendado"),
                 "trace_id": trace_id,
             }
         )
         state["historico_chat"] = novo_historico
 
         logger.info(
-            f"[NODE_HUMAN_IN_THE_LOOP] Aprovação processada | "
+            f"[NODE_HUMAN_IN_THE_LOOP] Validação profissional concluída | "
             f"status={state['ficha_triagem']['status_aprovacao']} | "
             f"tentativa={state['tentativas_approval']} | trace_id={trace_id}"
         )
 
     except Exception as e:
         logger.error(
-            f"[NODE_HUMAN_IN_THE_LOOP] Erro durante aprovação | "
+            f"[NODE_HUMAN_IN_THE_LOOP] Erro durante validação | "
             f"erro={str(e)} | trace_id={trace_id}"
         )
         raise

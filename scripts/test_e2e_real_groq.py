@@ -198,13 +198,13 @@ async def simular_acolhimento(caso: Dict[str, Any]) -> Dict[str, Any]:
                 decisao = caso["decisao_simulada"]
 
                 if decisao == "aprovado":
-                    print(f"   ✅ [PROFISSIONAL] Revisa e APROVA o atendimento")
-                    print(f"   📝 Observação: 'Caso validado. Encaminhado para grupo de apoio.'")
+                    print(f"   ✅ [PROFISSIONAL] Valida e APROVA a classificação")
+                    print(f"   📝 Observação: 'Classificação validada pelo profissional'")
                     status_aprovacao = "aprovado"
                 elif decisao == "rejeitado":
-                    print(f"   ❌ [PROFISSIONAL] Revisa e REJEITA o atendimento")
-                    print(f"   📝 Observação: 'Paciente reencaminhado para avaliação posterior.'")
-                    status_aprovacao = "rejeitado"
+                    print(f"   🔧 [PROFISSIONAL] IDENTIFICA ERRO DA IA e CORRIGE")
+                    print(f"   📝 Observação: 'IA subestimou/superestimou. Classificação corrigida pelo profissional.'")
+                    status_aprovacao = "corrigido"
                 else:
                     status_aprovacao = "pendente"
 
@@ -310,14 +310,14 @@ async def main():
     sucessos = sum(1 for r in resultados if r.get("sucesso"))
     alertas = sum(1 for r in resultados if r.get("alerta_disparado"))
     aprovacoes = sum(1 for r in resultados if r.get("status_aprovacao") == "aprovado")
-    rejeicoes = sum(1 for r in resultados if r.get("status_aprovacao") == "rejeitado")
+    correcoes = sum(1 for r in resultados if r.get("status_aprovacao") == "corrigido")
 
     print(f"\n📊 Estatísticas Gerais:")
     print(f"   Total de Pacientes: {len(TEST_CASES)}")
     print(f"   Acolhimentos Bem-sucedidos: {sucessos}/{len(TEST_CASES)} ✅")
     print(f"   Webhooks Disparados para n8n: {alertas}")
-    print(f"   Aprovações Humanas: {aprovacoes}")
-    print(f"   Rejeições Humanas: {rejeicoes}")
+    print(f"   Aprovações (IA acertou): {aprovacoes}")
+    print(f"   Correções (Profissional ajustou): {correcoes}")
 
     print(f"\n📈 Análise por Prioridade:")
     prioridades = {}
@@ -355,8 +355,8 @@ async def main():
             # Formatação de status HITL
             if status_hitl == "aprovado":
                 hitl_str = "✅ Aprovado"
-            elif status_hitl == "rejeitado":
-                hitl_str = "❌ Rejeitado"
+            elif status_hitl == "corrigido":
+                hitl_str = "🔧 Corrigido"
             else:
                 hitl_str = "⏳ Pendente"
 

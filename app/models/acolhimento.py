@@ -98,11 +98,11 @@ class FichaTriagemCAPS(BaseModel):
         description="Oficinas terapêuticas recomendadas baseadas em diretrizes clínicas",
         max_length=10,
     )
-    status_aprovacao: Literal["pendente", "aprovado", "rejeitado"] = Field(
+    status_aprovacao: Literal["pendente", "aprovado", "corrigido"] = Field(
         default="pendente",
         description="Status da aprovação por profissional de saúde. "
-        "Obrigatório 'aprovado' para prioridades altas. "
-        "'Rejeitado' significa IA errou a classificação - profissional faz a correção.",
+        "'aprovado': IA acertou a classificação. "
+        "'corrigido': Profissional ajustou nivel_prioridade e/ou encaminhamento_recomendado.",
     )
     data_criacao: datetime = Field(
         default_factory=datetime.utcnow, description="Data e hora de criação da ficha de triagem"
@@ -114,13 +114,13 @@ class FichaTriagemCAPS(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "nivel_prioridade": "Média",
-                "fatores_risco": ["Ansiedade generalizada", "Absenteísmo"],
-                "encaminhamento_recomendado": "Psicólogo + Grupo de Apoio para Ansiedade",
-                "oficinas_sugeridas": ["Oficina de Mindfulness", "Grupo de Suporte em Ansiedade"],
-                "status_aprovacao": "aprovado",
+                "nivel_prioridade": "Alta",
+                "fatores_risco": ["Ansiedade com ideação suicida histórica"],
+                "encaminhamento_recomendado": "Psiquiatra + Psicólogo (atendimento urgente)",
+                "oficinas_sugeridas": [],
+                "status_aprovacao": "corrigido",
                 "data_criacao": "2024-01-15T10:30:00",
-                "observacoes": "Paciente receptivo. Recomenda-se seguimento em 2 semanas.",
+                "observacoes": "IA subestimou risco. Paciente tem tentativa de suicídio prévia. Redirecionado para Psiquiatra urgente.",
             }
         }
 
