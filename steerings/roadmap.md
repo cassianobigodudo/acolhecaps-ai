@@ -231,22 +231,51 @@
 
 ---
 
-### ⏳ Card 9: Detecção de Anomalias e Análise de Tendência de Falhas
-**Status:** PENDENTE
+### ✅ Card 9: Detecção de Anomalias e Análise de Tendência de Falhas
+**Status:** CONCLUÍDO
 
 **Descrição:** Implementar a análise de padrões irregulares nas chamadas de sistema e projetar estimativas simples de risco.
 
 **Objetivo:** Identificar variações na taxa de erros ou latência da API e projetar probabilidade de falhas.
 
 **Resultado Esperado:**
-- Relatório de diagnóstico de anomalia
-- Evidências de padrões irregulares
-- Estimativa simples de tendência de falhas
+- ✅ Serviço de detecção de anomalias (AnomalyDetector)
+- ✅ Detecção de spikes de latência via Z-score
+- ✅ Detecção de taxa de erro elevada (sliding window)
+- ✅ Análise de pattern drift (mudança de padrão > 50%)
+- ✅ Estimativa de probabilidade de falha iminente (heurística)
+- ✅ Análise de tendência (degrading/improving/stable)
+- ✅ Agregador de anomalias para correlação cross-trace
+- ✅ Geração de relatórios estruturados com recomendações
+- ✅ 28/28 testes E2E passando (100%)
 
-**Próximos Passos:**
-1. Coletar métricas de execução
-2. Identificar padrões anormais
-3. Gerar relatório com estimativas
+**Tecnologias:**
+- Z-score para detecção de outliers
+- Sliding window analysis para taxa de erro
+- Pattern drift detection (primeira vs segunda metade)
+- Failure probability estimation com scoring heurístico
+- JSON structured reports com trace_id
+
+**Artefatos:**
+- `app/services/anomaly_detection.py` - Detector + Agregador (380 linhas)
+- `tests/unit/test_anomaly_detection_e2e.py` - Suite de testes (460 linhas, 28 testes)
+
+**Detecções Implementadas:**
+- Latency Spikes: Z-score > 2.0
+- Error Rate Anomalies: > 30% em janelas deslizantes
+- Pattern Drift: Mudança > 50% entre fases de execução
+- Failure Probability: Scoring heurístico combinado
+- Trend Analysis: Detecta degradação/melhora/estabilidade
+
+**Recomendações Automáticas:**
+- CRÍTICO: Probabilidade > 70%
+- ALERTA: Probabilidade > 50%
+- AVISO: Taxa de erro > 30%
+- ATENÇÃO: Tendência de degradação
+- OK: Sistema normal
+
+**Branch:** `feature/anomalia-detection`
+**Commits:** `9247b12`
 
 ---
 
@@ -305,18 +334,19 @@
 ## 📊 Resumo de Progresso
 
 ```
-Cards Concluídos:      8/11 (73%)
+Cards Concluídos:      9/11 (82%)
 Cards Em Progresso:    0/11 (0%)
-Cards Pendentes:       3/11 (27%)
+Cards Pendentes:       2/11 (18%)
 
-Total de Testes:       119/119 PASSING ✅
+Total de Testes:       147/147 PASSING ✅
 - MCP Territorial:     33/33 ✅
 - LangGraph:           17/17 ✅
 - RAG Service:         29/29 ✅
 - Security E2E:        18/18 ✅
 - Observability E2E:   16/16 ✅
 - Integration E2E:     23/23 ✅
-- Unit Tests (local):  78/78 ✅ (validated)
+- Anomaly Detection:   28/28 ✅ (NEW)
+- Unit Tests (local):  106/106 ✅ (validated)
 
 CI/CD Infrastructure:  Pipeline completo configurado ✅
 - Lint stages:         5/5 (black, isort, flake8, pylint, custom)
@@ -324,9 +354,16 @@ CI/CD Infrastructure:  Pipeline completo configurado ✅
 - Security stages:     2/2 (bandit + safety)
 - Validation stages:   3/3 (imports, syntax, config)
 
-Commits Atômicos:      20+ (incluindo Cards 1-8)
+Anomaly Detection:     Sistema completo operacional ✅
+- Z-score detection:   Latency spikes ✅
+- Error rate monitor:  Sliding window ✅
+- Pattern drift:       Phase comparison ✅
+- Failure probability: Heuristic scoring ✅
+- Trend analysis:      Degrading/improving/stable ✅
+
+Commits Atômicos:      21+ (incluindo Cards 1-9)
 Branches Ativas:       1
-  - feature/ci-pipeline-card8 (Card 8: CI/CD)
+  - feature/anomalia-detection (Card 9: Anomaly Detection)
 ```
 
 ---
@@ -373,4 +410,4 @@ Para manter rastreabilidade na avaliação:
 ---
 
 **Última Atualização:** 2026-09-03  
-**Próximo Review:** Após Card 8 (CI/CD) - Card 9 Próximo
+**Próximo Review:** Após Card 9 (Anomaly Detection) - Card 10 Próximo
