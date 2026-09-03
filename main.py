@@ -323,11 +323,11 @@ def _disparar_alerta_hitl_async(
         import requests
         
         logger.info(
-            f"[ALERTA_HITL] Iniciando disparo | trace_id={trace_id}"
+            f"[ALERTA_HITL] ▶️ Iniciando disparo | trace_id={trace_id}"
         )
         
         logger.info(
-            f"[ALERTA_HITL] Enviando mensagem ao Discord | trace_id={trace_id}"
+            f"[ALERTA_HITL] Webhook URL: {alert_service.webhook_url}"
         )
         
         # Cria payload para n8n
@@ -339,11 +339,15 @@ def _disparar_alerta_hitl_async(
         }
         
         logger.info(
-            f"[ALERTA_HITL] Payload criado | size={len(str(payload))} | trace_id={trace_id}"
+            f"[ALERTA_HITL] 📦 Payload preparado | size={len(str(payload))} bytes | trace_id={trace_id}"
         )
         
         # Usa requests síncrono em vez de httpx assíncrono
         try:
+            logger.info(
+                f"[ALERTA_HITL] 🚀 Enviando POST para webhook..."
+            )
+            
             response = requests.post(
                 alert_service.webhook_url,
                 json=payload,
@@ -351,29 +355,39 @@ def _disparar_alerta_hitl_async(
                 timeout=10,
             )
             
+            logger.info(
+                f"[ALERTA_HITL] 📬 Resposta recebida | status={response.status_code}"
+            )
+            
             if response.status_code in [200, 201, 202]:
                 logger.info(
-                    f"[ALERTA_HITL] ✅ Mensagem enviada com sucesso | "
-                    f"status={response.status_code} | trace_id={trace_id}"
+                    f"[ALERTA_HITL] ✅ Sucesso! Webhook disparado | "
+                    f"status={response.status_code} | "
+                    f"response={response.text[:200]} | trace_id={trace_id}"
                 )
             else:
                 logger.warning(
-                    f"[ALERTA_HITL] ⚠️ Webhook retornou {response.status_code} | "
-                    f"response={response.text[:200]} | trace_id={trace_id}"
+                    f"[ALERTA_HITL] ⚠️ Status não esperado | "
+                    f"status={response.status_code} | "
+                    f"response={response.text[:500]} | trace_id={trace_id}"
                 )
                 
         except requests.exceptions.Timeout:
             logger.error(
-                f"[ALERTA_HITL] ❌ Timeout ao enviar webhook (10s) | trace_id={trace_id}"
+                f"[ALERTA_HITL] ⏱️ Timeout ao enviar webhook (10s) | trace_id={trace_id}"
             )
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as ce:
             logger.error(
-                f"[ALERTA_HITL] ❌ Erro de conexão ao enviar webhook | trace_id={trace_id}"
+                f"[ALERTA_HITL] 🔌 Erro de conexão | erro={str(ce)} | trace_id={trace_id}"
+            )
+        except Exception as re:
+            logger.error(
+                f"[ALERTA_HITL] 📡 Erro na requisição | erro={str(re)} | trace_id={trace_id}"
             )
         
     except Exception as e:
         logger.error(
-            f"[ALERTA_HITL] ❌ Erro ao enviar alerta | erro={str(e)} | trace_id={trace_id}"
+            f"[ALERTA_HITL] ❌ Erro geral | erro={str(e)} | tipo={type(e).__name__} | trace_id={trace_id}"
         )
 
 
