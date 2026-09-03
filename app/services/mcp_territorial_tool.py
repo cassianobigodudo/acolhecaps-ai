@@ -11,18 +11,19 @@ Características:
 - Logging estruturado com trace_id
 """
 
+import asyncio
 import json
 import logging
 import re
-from typing import TypedDict, Optional
 from datetime import datetime, timezone
-import asyncio
+from typing import Optional, TypedDict
 
 logger = logging.getLogger(__name__)
 
 
 class ValidacaoTerritorialPayload(TypedDict):
     """Schema de validação para payload territorial."""
+
     cep: str
     bairro: str
     municipio: str
@@ -30,6 +31,7 @@ class ValidacaoTerritorialPayload(TypedDict):
 
 class ResultadoValidacaoTerritorial(TypedDict):
     """Resultado da validação territorial."""
+
     valido: bool
     cep: str
     bairro: str
@@ -43,7 +45,7 @@ class ResultadoValidacaoTerritorial(TypedDict):
 class MCPTerritorialTool:
     """
     Tool MCP para validação territorial de pacientes no CAPS.
-    
+
     Simula consulta em base de dados geográfica do SUS para validar
     se o endereço pertence à área de cobertura do CAPS de Florianópolis/SC.
     """
@@ -77,7 +79,7 @@ class MCPTerritorialTool:
     def __init__(self, trace_id: Optional[str] = None):
         """
         Inicializa a Tool MCP.
-        
+
         Args:
             trace_id: ID único para correlação de logs (opcional)
         """
@@ -88,16 +90,17 @@ class MCPTerritorialTool:
     def _gerar_trace_id() -> str:
         """Gera um trace_id único."""
         from uuid import uuid4
+
         return f"territorial-{uuid4().hex[:8]}"
 
     @staticmethod
     def _validar_formato_cep(cep: str) -> bool:
         """
         Valida o formato do CEP (padrão brasileiro: XXXXX-XXX ou XXXXXXXX).
-        
+
         Args:
             cep: CEP a validar
-            
+
         Returns:
             True se formato é válido, False caso contrário
         """
@@ -107,10 +110,10 @@ class MCPTerritorialTool:
     def _normalizar_cep(self, cep: str) -> str:
         """
         Normaliza CEP removendo hífen e espaços.
-        
+
         Args:
             cep: CEP a normalizar
-            
+
         Returns:
             CEP normalizado (8 dígitos)
         """
@@ -123,14 +126,14 @@ class MCPTerritorialTool:
     ) -> ResultadoValidacaoTerritorial:
         """
         Valida se o CEP/Bairro pertence à área de cobertura CAPS.
-        
+
         Args:
             payload: Dicionário com cep, bairro e municipio
             timeout: Timeout em segundos (default: TIMEOUT_SEGUNDOS)
-            
+
         Returns:
             Resultado da validação com status, mensagem e fallback
-            
+
         Raises:
             asyncio.TimeoutError: Se exceder timeout
             ValueError: Se payload inválido
@@ -139,12 +142,14 @@ class MCPTerritorialTool:
         self.tentativas = 0
 
         logger.info(
-            json.dumps({
-                "trace_id": self.trace_id,
-                "evento": "validacao_territorial_iniciada",
-                "cep": payload.get("cep", ""),
-                "municipio": payload.get("municipio", ""),
-            })
+            json.dumps(
+                {
+                    "trace_id": self.trace_id,
+                    "evento": "validacao_territorial_iniciada",
+                    "cep": payload.get("cep", ""),
+                    "municipio": payload.get("municipio", ""),
+                }
+            )
         )
 
         try:
@@ -158,53 +163,61 @@ class MCPTerritorialTool:
             )
 
             logger.info(
-                json.dumps({
-                    "trace_id": self.trace_id,
-                    "evento": "validacao_territorial_sucesso",
-                    "valido": resultado["valido"],
-                })
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "validacao_territorial_sucesso",
+                        "valido": resultado["valido"],
+                    }
+                )
             )
 
             return resultado
 
         except asyncio.TimeoutError:
             logger.warning(
-                json.dumps({
-                    "trace_id": self.trace_id,
-                    "evento": "validacao_territorial_timeout",
-                    "timeout_segundos": timeout,
-                })
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "validacao_territorial_timeout",
+                        "timeout_segundos": timeout,
+                    }
+                )
             )
             return self._resultado_fallback(payload, erro="timeout")
 
         except ValueError as e:
             logger.error(
-                json.dumps({
-                    "trace_id": self.trace_id,
-                    "evento": "validacao_territorial_erro_validacao",
-                    "erro": str(e),
-                })
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "validacao_territorial_erro_validacao",
+                        "erro": str(e),
+                    }
+                )
             )
             return self._resultado_fallback(payload, erro=str(e))
 
         except Exception as e:
             logger.error(
-                json.dumps({
-                    "trace_id": self.trace_id,
-                    "evento": "validacao_territorial_erro_desconhecido",
-                    "erro": str(e),
-                    "tipo_erro": type(e).__name__,
-                })
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "validacao_territorial_erro_desconhecido",
+                        "erro": str(e),
+                        "tipo_erro": type(e).__name__,
+                    }
+                )
             )
             return self._resultado_fallback(payload, erro="erro_desconhecido")
 
     def _validar_payload(self, payload: ValidacaoTerritorialPayload) -> None:
         """
         Valida o payload de entrada.
-        
+
         Args:
             payload: Dicionário com cep, bairro e municipio
-            
+
         Raises:
             ValueError: Se payload inválido
         """
@@ -225,10 +238,10 @@ class MCPTerritorialTool:
     ) -> ResultadoValidacaoTerritorial:
         """
         Consulta a base de cobertura (simulado com pequeno delay).
-        
+
         Args:
             payload: Dicionário com cep, bairro e municipio
-            
+
         Returns:
             Resultado da validação
         """
@@ -240,10 +253,7 @@ class MCPTerritorialTool:
         municipio = payload.get("municipio", "").strip().upper()
 
         # Validar se CEP está na cobertura
-        valido = (
-            prefixo_cep in self.CEPS_COBERTURA_FLORIANOPOLIS
-            and municipio == "FLORIANÓPOLIS"
-        )
+        valido = prefixo_cep in self.CEPS_COBERTURA_FLORIANOPOLIS and municipio == "FLORIANÓPOLIS"
 
         area_cobertura = (
             self.CEPS_COBERTURA_FLORIANOPOLIS.get(prefixo_cep, "Desconhecida")
@@ -273,22 +283,24 @@ class MCPTerritorialTool:
     ) -> ResultadoValidacaoTerritorial:
         """
         Retorna resultado de fallback em caso de erro.
-        
+
         Em modo fallback, aceita qualquer CEP com aviso.
-        
+
         Args:
             payload: Payload original
             erro: Descrição do erro
-            
+
         Returns:
             Resultado com flag de fallback ativado
         """
         logger.info(
-            json.dumps({
-                "trace_id": self.trace_id,
-                "evento": "validacao_territorial_fallback_ativado",
-                "erro_original": erro,
-            })
+            json.dumps(
+                {
+                    "trace_id": self.trace_id,
+                    "evento": "validacao_territorial_fallback_ativado",
+                    "erro_original": erro,
+                }
+            )
         )
 
         return {
@@ -298,7 +310,7 @@ class MCPTerritorialTool:
             "municipio": payload.get("municipio", "").strip().upper(),
             "area_cobertura": "FALLBACK - Validação indisponível",
             "mensagem": f"Validação territorial indisponível ({erro}). "
-                       "Aceitando CEP com ressalva para revisão manual.",
+            "Aceitando CEP com ressalva para revisão manual.",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "fallback": True,
         }
@@ -311,10 +323,10 @@ _tool_singleton: Optional[MCPTerritorialTool] = None
 def obter_tool_territorial(trace_id: Optional[str] = None) -> MCPTerritorialTool:
     """
     Obtém ou cria a instância da Tool MCP (singleton).
-    
+
     Args:
         trace_id: ID único para correlação de logs
-        
+
     Returns:
         Instância de MCPTerritorialTool
     """

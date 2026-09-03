@@ -8,14 +8,14 @@ Este módulo fornece infraestrutura centralizada para:
 - Arquivo de log centralizado para análise
 """
 
+import functools
 import json
 import logging
 import time
-import functools
-from typing import Optional, Dict, Any, Callable
-from datetime import datetime, timezone
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
 # ============================================================================
 # Global State para trace_id
@@ -53,15 +53,14 @@ def trace_context(trace_id: str):
 # JSON Logger Estruturado
 # ============================================================================
 
+
 class StructuredJSONFormatter(logging.Formatter):
     """Formatter customizado que emite logs em JSON estruturado."""
 
     def format(self, record: logging.LogRecord) -> str:
         """Formata o registro de log como JSON estruturado."""
         log_obj = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -126,6 +125,7 @@ def setup_observability_logger(
 # Decorador de Latência
 # ============================================================================
 
+
 def measure_latency(logger: logging.Logger, operation_name: str):
     """
     Decorador que mede e registra latência de uma função.
@@ -172,6 +172,7 @@ def measure_latency(logger: logging.Logger, operation_name: str):
 # Contexto de Requisição
 # ============================================================================
 
+
 class RequestContext:
     """Contexto de requisição com métricas e eventos correlacionados."""
 
@@ -185,9 +186,7 @@ class RequestContext:
         self.trace_id = trace_id
         self.start_time = time.time()
         self.events: list = []
-        self.logger = setup_observability_logger(
-            f"RequestContext[{trace_id}]"
-        )
+        self.logger = setup_observability_logger(f"RequestContext[{trace_id}]")
 
     def log_event(
         self,
@@ -279,6 +278,7 @@ class RequestContext:
 # Log Aggregator para Análise
 # ============================================================================
 
+
 class ObservabilityLogAggregator:
     """Agregador de logs para análise de execução end-to-end."""
 
@@ -304,12 +304,8 @@ class ObservabilityLogAggregator:
             "duration_ms": context.get_duration_ms(),
             "events_count": len(context.events),
             "summary": {
-                "start_node": context.events[0]["node"]
-                if context.events
-                else None,
-                "end_node": context.events[-1]["node"]
-                if context.events
-                else None,
+                "start_node": context.events[0]["node"] if context.events else None,
+                "end_node": context.events[-1]["node"] if context.events else None,
                 "total_events": len(context.events),
             },
         }
@@ -354,15 +350,9 @@ class ObservabilityLogAggregator:
                         if entry.get("trace_id") == trace_id:
                             stats["found"] = True
                             if "duration_ms" in entry:
-                                stats["total_duration_ms"] = entry[
-                                    "duration_ms"
-                                ]
-                            if "metadata" in entry and "node" in entry[
-                                "metadata"
-                            ]:
-                                stats["events"].append(
-                                    entry.get("metadata")
-                                )
+                                stats["total_duration_ms"] = entry["duration_ms"]
+                            if "metadata" in entry and "node" in entry["metadata"]:
+                                stats["events"].append(entry.get("metadata"))
                     except json.JSONDecodeError:
                         continue
         except FileNotFoundError:

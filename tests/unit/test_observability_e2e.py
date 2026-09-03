@@ -8,16 +8,15 @@ Este arquivo testa:
 - Arquivo de log com traces completos
 """
 
-import pytest
 import json
 import time
-from pathlib import Path
+
 from app.services.observability import (
-    RequestContext,
     ObservabilityLogAggregator,
-    trace_context,
+    RequestContext,
     get_current_trace_id,
     setup_observability_logger,
+    trace_context,
 )
 
 
@@ -294,7 +293,6 @@ class TestObservabilityMetricsCapture:
         ctx = RequestContext("metrics-001")
 
         # Simula operações com latência
-        start = time.time()
         time.sleep(0.05)
         ctx.log_metric("operacao_1_latencia", 50, "ms")
 

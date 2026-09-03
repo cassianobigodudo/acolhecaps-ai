@@ -6,12 +6,8 @@ Exporta as classes Pydantic para triagem e acolhimento.
 
 from app.models.acolhimento import (
     EntradaAcolhimento,
+    EstadoAcolhimento,
     FichaTriagemCAPS,
-    EstadoAcolhimento
 )
 
-__all__ = [
-    "EntradaAcolhimento",
-    "FichaTriagemCAPS",
-    "EstadoAcolhimento"
-]
+__all__ = ["EntradaAcolhimento", "FichaTriagemCAPS", "EstadoAcolhimento"]

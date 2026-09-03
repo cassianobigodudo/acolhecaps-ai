@@ -3,39 +3,38 @@ Contratos de dados para AcolheCAPS AI - Assistente de Triagem e Apoio Multiprofi
 Define os schemas Pydantic para validação de entrada e saída do fluxo de acolhimento.
 """
 
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field, validator
 from datetime import datetime
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, Field, validator
 
 
 class EntradaAcolhimento(BaseModel):
     """
     Schema para entrada de dados do acolhimento do paciente.
-    
+
     Attributes:
         id_paciente: Identificador único do paciente
         relato: Descrição do relato de acolhimento fornecido pelo paciente
         cep: Código de Endereçamento Postal para validação territorial
     """
+
     id_paciente: str = Field(
-        ..., 
-        description="Identificador único do paciente no sistema",
-        min_length=1,
-        max_length=50
+        ..., description="Identificador único do paciente no sistema", min_length=1, max_length=50
     )
     relato: str = Field(
         ...,
         description="Relato textual do acolhimento - motivo da consulta e sintomas",
         min_length=10,
-        max_length=5000
+        max_length=5000,
     )
     cep: str = Field(
         ...,
         description="CEP do endereço do paciente para validação de cobertura territorial",
-        pattern=r"^\d{5}-?\d{3}$"
+        pattern=r"^\d{5}-?\d{3}$",
     )
-    
-    @validator('relato')
+
+    @validator("relato")
     def validar_relato_seguranca(cls, v):
         """Validação básica de segurança contra prompt injection no relato."""
         # Verifica sinais de prompt injection simples
@@ -45,14 +44,14 @@ class EntradaAcolhimento(BaseModel):
             "libere medicação",
             "by-pass",
             "override",
-            "forget the context"
+            "forget the context",
         ]
         v_lower = v.lower()
         for sinal in sinais_suspeitos:
             if sinal in v_lower:
                 raise ValueError(
-                    f"Relato contém instruções suspeitas. "
-                    f"Mantendo limites de autonomia do agente."
+                    "Relato contém instruções suspeitas. "
+                    "Mantendo limites de autonomia do agente."
                 )
         return v
 
@@ -61,8 +60,8 @@ class EntradaAcolhimento(BaseModel):
             "example": {
                 "id_paciente": "PAC-2024-001",
                 "relato": "Paciente relata sentimentos de ansiedade persistente, "
-                          "dificuldade de concentração e insônia há 3 meses.",
-                "cep": "88015-100"
+                "dificuldade de concentração e insônia há 3 meses.",
+                "cep": "88015-100",
             }
         }
 
@@ -71,41 +70,37 @@ class FichaTriagemCAPS(BaseModel):
     """
     Schema para saída estruturada da ficha de triagem do CAPS.
     Consolida a análise de risco, prioridade e recomendações de atendimento.
-    
+
     Attributes:
         nivel_prioridade: Nível de prioridade do atendimento (Alta, Média, Baixa)
         fatores_risco: Lista de fatores de risco identificados no relato
         oficinas_sugeridas: Lista de oficinas terapêuticas recomendadas
         status_aprovacao: Status da aprovação humana (pendente, aprovado, rejeitado)
     """
-    
+
     nivel_prioridade: Literal["Alta", "Média", "Baixa"] = Field(
-        ...,
-        description="Nível de prioridade da triagem determinado pelo fluxo de análise"
+        ..., description="Nível de prioridade da triagem determinado pelo fluxo de análise"
     )
     fatores_risco: List[str] = Field(
         default_factory=list,
         description="Lista de fatores de risco identificados (ex: ideação suicida, crise aguda)",
-        max_length=20
+        max_length=20,
     )
     oficinas_sugeridas: List[str] = Field(
         default_factory=list,
         description="Oficinas terapêuticas recomendadas baseadas em diretrizes clínicas",
-        max_length=10
+        max_length=10,
     )
     status_aprovacao: Literal["pendente", "aprovado", "rejeitado"] = Field(
         default="pendente",
         description="Status da aprovação por profissional de saúde. "
-                    "Obrigatório 'aprovado' para prioridades altas."
+        "Obrigatório 'aprovado' para prioridades altas.",
     )
     data_criacao: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="Data e hora de criação da ficha de triagem"
+        default_factory=datetime.utcnow, description="Data e hora de criação da ficha de triagem"
     )
     observacoes: Optional[str] = Field(
-        default=None,
-        description="Observações adicionais do profissional de saúde",
-        max_length=1000
+        default=None, description="Observações adicionais do profissional de saúde", max_length=1000
     )
 
     class Config:
@@ -113,13 +108,10 @@ class FichaTriagemCAPS(BaseModel):
             "example": {
                 "nivel_prioridade": "Baixa",
                 "fatores_risco": ["Ansiedade leve", "Insônia"],
-                "oficinas_sugeridas": [
-                    "Oficina de Mindfulness",
-                    "Grupo de Suporte em Ansiedade"
-                ],
+                "oficinas_sugeridas": ["Oficina de Mindfulness", "Grupo de Suporte em Ansiedade"],
                 "status_aprovacao": "aprovado",
                 "data_criacao": "2024-01-15T10:30:00",
-                "observacoes": "Paciente receptivo. Recomenda-se seguimento em 2 semanas."
+                "observacoes": "Paciente receptivo. Recomenda-se seguimento em 2 semanas.",
             }
         }
 
@@ -128,7 +120,7 @@ class EstadoAcolhimento(BaseModel):
     """
     Schema para o estado interno do grafo LangGraph.
     Mantém histórico de execução, contexto RAG e metadados do paciente.
-    
+
     Attributes:
         id_sessao: Identificador único da sessão de acolhimento
         entrada: Dados de entrada do acolhimento
@@ -138,39 +130,28 @@ class EstadoAcolhimento(BaseModel):
         ficha_triagem: Ficha de triagem estruturada (saída)
         trace_id: ID de rastreabilidade para observabilidade
     """
-    id_sessao: str = Field(
-        ...,
-        description="Identificador único da sessão de acolhimento"
-    )
-    entrada: EntradaAcolhimento = Field(
-        ...,
-        description="Dados de entrada do acolhimento"
-    )
+
+    id_sessao: str = Field(..., description="Identificador único da sessão de acolhimento")
+    entrada: EntradaAcolhimento = Field(..., description="Dados de entrada do acolhimento")
     historico_chat: List[dict] = Field(
-        default_factory=list,
-        description="Histórico de mensagens e decisões do agente"
+        default_factory=list, description="Histórico de mensagens e decisões do agente"
     )
     contexto_rag: Optional[str] = Field(
-        default=None,
-        description="Contexto recuperado do banco vetorial de diretrizes"
+        default=None, description="Contexto recuperado do banco vetorial de diretrizes"
     )
     resultado_territorial: Optional[dict] = Field(
-        default=None,
-        description="Resultado da validação territorial (CEP válido, cobertura, etc)"
+        default=None, description="Resultado da validação territorial (CEP válido, cobertura, etc)"
     )
     ficha_triagem: Optional[FichaTriagemCAPS] = Field(
-        default=None,
-        description="Ficha de triagem estruturada (preenchida ao final do fluxo)"
+        default=None, description="Ficha de triagem estruturada (preenchida ao final do fluxo)"
     )
     trace_id: str = Field(
-        ...,
-        description="ID de rastreabilidade para observabilidade e logging estruturado"
+        ..., description="ID de rastreabilidade para observabilidade e logging estruturado"
     )
     requer_aprovacao_humana: bool = Field(
-        default=False,
-        description="Flag indicando se requer human-in-the-loop antes de prosseguir"
+        default=False, description="Flag indicando se requer human-in-the-loop antes de prosseguir"
     )
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -178,13 +159,13 @@ class EstadoAcolhimento(BaseModel):
                 "entrada": {
                     "id_paciente": "PAC-2024-001",
                     "relato": "Ansiedade persistente...",
-                    "cep": "88015-100"
+                    "cep": "88015-100",
                 },
                 "historico_chat": [],
                 "contexto_rag": None,
                 "resultado_territorial": None,
                 "ficha_triagem": None,
                 "trace_id": "trace-2024-001-xyz789",
-                "requer_aprovacao_humana": False
+                "requer_aprovacao_humana": False,
             }
         }

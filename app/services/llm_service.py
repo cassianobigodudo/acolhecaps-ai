@@ -6,12 +6,11 @@ diferentes modelos conforme necessidade e facilitando testes com mocks.
 """
 
 import logging
-from typing import Optional
 from functools import lru_cache
+from typing import Optional
 
 from groq import Groq
 from pydantic_settings import BaseSettings
-
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 class GroqSettings(BaseSettings):
     """
     Configurações de ambiente para Groq.
-    
+
     Atributos:
         groq_api_key: Chave de API do Groq
         llm_provider: Provedor de LLM (groq, openai, etc)
@@ -27,6 +26,7 @@ class GroqSettings(BaseSettings):
         llm_temperature: Temperatura do modelo (0-1)
         llm_max_tokens: Máximo de tokens na resposta
     """
+
     groq_api_key: str
     llm_provider: str = "groq"
     llm_model: str = "openai/gpt-oss-120b"
@@ -43,27 +43,26 @@ class GroqSettings(BaseSettings):
 def get_groq_client() -> Groq:
     """
     Obtém ou cria o cliente Groq singleton.
-    
+
     Returns:
         Groq: Cliente Groq configurado
-        
+
     Raises:
         ValueError: Se GROQ_API_KEY não estiver definida
     """
     settings = GroqSettings()
-    
+
     if not settings.groq_api_key:
         raise ValueError(
-            "GROQ_API_KEY não definida. "
-            "Configure a variável de ambiente GROQ_API_KEY"
+            "GROQ_API_KEY não definida. " "Configure a variável de ambiente GROQ_API_KEY"
         )
-    
+
     logger.info(
         f"Inicializando cliente Groq | "
         f"modelo={settings.llm_model} | "
         f"temperatura={settings.llm_temperature}"
     )
-    
+
     return Groq(api_key=settings.groq_api_key)
 
 
@@ -71,7 +70,7 @@ def get_groq_client() -> Groq:
 def get_groq_settings() -> GroqSettings:
     """
     Obtém as configurações do Groq.
-    
+
     Returns:
         GroqSettings: Configurações carregadas
     """
@@ -82,23 +81,23 @@ class GroqLLM:
     """
     Wrapper simplificado para usar Groq no LangGraph.
     """
-    
+
     def __init__(self):
         """Inicializa o wrapper com cliente e settings."""
         self.client = get_groq_client()
         self.settings = get_groq_settings()
-    
+
     def invoke(self, prompt: str, trace_id: Optional[str] = None) -> str:
         """
         Executa uma chamada ao Groq LLM.
-        
+
         Args:
             prompt: Prompt para enviar ao modelo
             trace_id: ID de rastreabilidade (opcional)
-        
+
         Returns:
             str: Resposta do modelo
-            
+
         Raises:
             Exception: Se houver erro na chamada ao Groq
         """
@@ -108,48 +107,50 @@ class GroqLLM:
                 f"modelo={self.settings.llm_model} | "
                 f"trace_id={trace_id}"
             )
-            
+
             message = self.client.chat.completions.create(
                 model=self.settings.llm_model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "Você é um assistente especializado em triagem de saúde mental para CAPS."
+                        "content": (
+                            "Você é um assistente especializado em triagem de "
+                            "saúde mental para CAPS."
+                        ),
                     },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=self.settings.llm_temperature,
                 max_tokens=self.settings.llm_max_tokens,
             )
-            
+
             resposta = message.choices[0].message.content
-            
+
+            tokens_info = (
+                message.usage.total_tokens if message.usage else "N/A"
+            )
             logger.info(
                 f"[GROQ] Resposta recebida com sucesso | "
-                f"tokens_usados={message.usage.total_tokens if message.usage else 'N/A'} | "
+                f"tokens_usados={tokens_info} | "
                 f"trace_id={trace_id}"
             )
-            
+
             return resposta
-            
+
         except Exception as e:
             logger.error(
-                f"[GROQ] Erro na chamada ao modelo | "
-                f"erro={str(e)} | trace_id={trace_id}"
+                f"[GROQ] Erro na chamada ao modelo | " f"erro={str(e)} | trace_id={trace_id}"
             )
             raise
-    
+
     def extrair_pontos_chave(self, relato: str, trace_id: Optional[str] = None) -> list[str]:
         """
         Extrai pontos-chave de um relato usando Groq.
-        
+
         Args:
             relato: Relato do paciente
             trace_id: ID de rastreabilidade (opcional)
-        
+
         Returns:
             list[str]: Lista de pontos-chave identificados
         """
@@ -162,30 +163,27 @@ Relato:
 
 Pontos-chave:
 """
-        
+
         resposta = self.invoke(prompt, trace_id)
         pontos = [p.strip() for p in resposta.split(",")]
         return pontos
-    
+
     def avaliar_nivel_prioridade(
-        self,
-        relato: str,
-        contexto_rag: Optional[str] = None,
-        trace_id: Optional[str] = None
+        self, relato: str, contexto_rag: Optional[str] = None, trace_id: Optional[str] = None
     ) -> tuple[str, list[str]]:
         """
         Avalia o nível de prioridade e fatores de risco usando Groq.
-        
+
         Args:
             relato: Relato do paciente
             contexto_rag: Contexto de diretrizes clínicas (opcional)
             trace_id: ID de rastreabilidade (opcional)
-        
+
         Returns:
             tuple: (nivel_prioridade, fatores_risco)
         """
         contexto_part = f"Contexto de diretrizes: {contexto_rag}\n\n" if contexto_rag else ""
-        
+
         prompt = f"""
 {contexto_part}
 Avalie o relato seguinte e determine o nível de prioridade de triagem.
@@ -199,14 +197,14 @@ FATORES_RISCO: [fator1, fator2, fator3]
 
 Resposta:
 """
-        
+
         resposta = self.invoke(prompt, trace_id)
-        
+
         # Parse resposta
         linhas = resposta.strip().split("\n")
         prioridade = "Baixa"  # default
         fatores_risco = []
-        
+
         for linha in linhas:
             if "PRIORIDADE:" in linha:
                 # Remove "PRIORIDADE:" e limpa espaços em branco
@@ -225,7 +223,7 @@ Resposta:
                 # Se a string estiver vazia ou for apenas "[]", retorna lista vazia
                 if fatores_str and fatores_str != "":
                     fatores_risco = [f.strip() for f in fatores_str.split(",") if f.strip()]
-        
+
         return prioridade, fatores_risco
 
 
@@ -236,7 +234,7 @@ _groq_llm_instance: Optional[GroqLLM] = None
 def get_groq_llm() -> GroqLLM:
     """
     Obtém a instância singleton do wrapper GroqLLM.
-    
+
     Returns:
         GroqLLM: Instância do wrapper
     """
@@ -249,8 +247,9 @@ def get_groq_llm() -> GroqLLM:
 if __name__ == "__main__":
     # Teste de configuração
     import logging
+
     logging.basicConfig(level=logging.INFO)
-    
+
     try:
         llm = get_groq_llm()
         print("✓ Cliente Groq inicializado com sucesso")

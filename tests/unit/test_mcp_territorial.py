@@ -5,13 +5,13 @@ Cobre cenários: validação bem-sucedida, CEP fora de cobertura, timeout,
 fallback, e injeção de prompt.
 """
 
-import pytest
 import asyncio
-import json
 from datetime import datetime
+
+import pytest
+
 from app.services.mcp_territorial_tool import (
     MCPTerritorialTool,
-    ValidacaoTerritorialPayload,
     obter_tool_territorial,
 )
 
@@ -343,6 +343,7 @@ class TestMCPTerritorialSingleton:
         """Primeira chamada deve criar nova instância."""
         # Limpar singleton anterior
         import app.services.mcp_territorial_tool as mcp_module
+
         mcp_module._tool_singleton = None
 
         tool = obter_tool_territorial()
@@ -352,6 +353,7 @@ class TestMCPTerritorialSingleton:
     def test_obter_tool_reutiliza_instancia(self):
         """Chamadas subsequentes devem reutilizar instância."""
         import app.services.mcp_territorial_tool as mcp_module
+
         mcp_module._tool_singleton = None
 
         tool1 = obter_tool_territorial()
