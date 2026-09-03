@@ -264,6 +264,76 @@ Resposta:
 
         return prioridade, fatores_risco
 
+    def gerar_encaminhamento(
+        self, relato: str, nivel_prioridade: str, fatores_risco: list[str], trace_id: Optional[str] = None
+    ) -> str:
+        """
+        Gera recomendação de encaminhamento para profissional baseado no diagnóstico.
+
+        Args:
+            relato: Relato do paciente
+            nivel_prioridade: Nível de prioridade (Alta, Média, Baixa)
+            fatores_risco: Lista de fatores de risco identificados
+            trace_id: ID de rastreabilidade (opcional)
+
+        Returns:
+            str: Recomendação de encaminhamento (ex: "Psicólogo + Grupo de Apoio")
+        """
+        fatores_str = ", ".join(fatores_risco) if fatores_risco else "Sem fatores específicos"
+
+        prompt = f"""
+Com base no seguinte relato de triagem, recomende o MELHOR encaminhamento profissional 
+para o atendimento do paciente.
+
+Nível de Prioridade: {nivel_prioridade}
+Fatores de Risco: {fatores_str}
+
+Relato:
+{relato}
+
+GUIA DE ENCAMINHAMENTO:
+
+Para PRIORIDADE ALTA ou com risco suicida/homicida:
+→ Encaminhe para: Psiquiatra + Psicólogo (atendimento urgente)
+
+Para DEPRESSÃO SEVERA:
+→ Encaminhe para: Psiquiatra (avaliação de medicação) + Psicólogo (terapia)
+
+Para DEPRESSÃO MODERADA/CRÔNICA:
+→ Encaminhe para: Psicólogo + Grupo de Apoio para Depressão
+
+Para ANSIEDADE:
+→ Encaminhe para: Psicólogo + Grupo de Apoio para Ansiedade
+
+Para ABUSO DE SUBSTÂNCIA:
+→ Encaminhe para: Especialista em Dependência + Grupo de Suporte
+
+Para TRAUMA/PTSD:
+→ Encaminhe para: Psicólogo especializado em trauma + Terapia de Grupo
+
+Para TRANSTORNO BIPOLAR:
+→ Encaminhe para: Psiquiatra + Psicólogo
+
+Para ISOLAMENTO SOCIAL/LUTO:
+→ Encaminhe para: Assistente Social + Grupo de Apoio + Psicólogo
+
+Para STRESS OCUPACIONAL:
+→ Encaminhe para: Psicólogo + Orientação Profissional
+
+Para PRIORIDADE BAIXA (sem urgência):
+→ Encaminhe para: Psicólogo + Acompanhamento em grupo
+
+Forneça UMA ÚNICA linha com a recomendação de encaminhamento mais apropriada:
+"""
+
+        resposta = self.invoke(prompt, trace_id)
+        # Limpa a resposta
+        encaminhamento = resposta.strip()
+        # Se começar com "→ Encaminhe para:" remove isso
+        if "→ Encaminhe para:" in encaminhamento:
+            encaminhamento = encaminhamento.split("→ Encaminhe para:")[1].strip()
+        return encaminhamento
+
 
 # Singleton para uso simplificado
 _groq_llm_instance: Optional[GroqLLM] = None

@@ -246,6 +246,17 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
                 f"prioridade={prioridade} | usando Média como fallback | trace_id={trace_id}"
             )
 
+        # Gera encaminhamento baseado no diagnóstico
+        logger.info(
+            f"[NODE_AVALIACAO_RISCO] Gerando recomendação de encaminhamento | trace_id={trace_id}"
+        )
+        encaminhamento = llm.gerar_encaminhamento(
+            relato=entrada.get("relato", ""),
+            nivel_prioridade=prioridade,
+            fatores_risco=fatores_risco,
+            trace_id=trace_id,
+        )
+
         # Recomenda oficinas baseado em prioridade
         oficinas_sugeridas = []
         if prioridade == "Baixa":
@@ -261,6 +272,7 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         ficha = {
             "nivel_prioridade": prioridade,
             "fatores_risco": fatores_risco if fatores_risco else [],
+            "encaminhamento_recomendado": encaminhamento,
             "oficinas_sugeridas": oficinas_sugeridas,
             "status_aprovacao": "pendente",
             "data_criacao": datetime.utcnow().isoformat(),
@@ -279,6 +291,7 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
                 "action": "risco_avaliado_com_groq",
                 "nivel_prioridade": prioridade,
                 "fatores_risco": fatores_risco,
+                "encaminhamento": encaminhamento,
                 "requer_aprovacao": state["requer_aprovacao_humana"],
                 "trace_id": trace_id,
             }
@@ -290,6 +303,7 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
             f"[NODE_AVALIACAO_RISCO] Avaliação concluída com Groq | "
             f"prioridade={prioridade} | "
             f"fatores_risco={len(fatores_risco)} | "
+            f"encaminhamento={encaminhamento} | "
             f"requer_approval={state['requer_aprovacao_humana']} | trace_id={trace_id}"
         )
 
@@ -302,6 +316,7 @@ def node_avaliacao_risco(state: AcolhimentoState) -> AcolhimentoState:
         state["ficha_triagem"] = {
             "nivel_prioridade": "Média",
             "fatores_risco": ["Erro na avaliação - necessária revisão profissional"],
+            "encaminhamento_recomendado": "Psicólogo para avaliação completa",
             "oficinas_sugeridas": [],
             "status_aprovacao": "pendente",
             "data_criacao": datetime.utcnow().isoformat(),

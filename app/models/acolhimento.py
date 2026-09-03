@@ -74,6 +74,7 @@ class FichaTriagemCAPS(BaseModel):
     Attributes:
         nivel_prioridade: Nível de prioridade do atendimento (Alta, Média, Baixa)
         fatores_risco: Lista de fatores de risco identificados no relato
+        encaminhamento_recomendado: Profissional/especialidade recomendada baseado no diagnóstico
         oficinas_sugeridas: Lista de oficinas terapêuticas recomendadas
         status_aprovacao: Status da aprovação humana (pendente, aprovado, rejeitado)
     """
@@ -86,6 +87,12 @@ class FichaTriagemCAPS(BaseModel):
         description="Lista de fatores de risco identificados (ex: ideação suicida, crise aguda)",
         max_length=20,
     )
+    encaminhamento_recomendado: Optional[str] = Field(
+        default=None,
+        description="Profissional/especialidade recomendada para atendimento baseado no diagnóstico "
+        "(ex: Psicólogo, Psiquiatra, Assistente Social, Grupo de Apoio, etc)",
+        max_length=200,
+    )
     oficinas_sugeridas: List[str] = Field(
         default_factory=list,
         description="Oficinas terapêuticas recomendadas baseadas em diretrizes clínicas",
@@ -94,7 +101,8 @@ class FichaTriagemCAPS(BaseModel):
     status_aprovacao: Literal["pendente", "aprovado", "rejeitado"] = Field(
         default="pendente",
         description="Status da aprovação por profissional de saúde. "
-        "Obrigatório 'aprovado' para prioridades altas.",
+        "Obrigatório 'aprovado' para prioridades altas. "
+        "'Rejeitado' significa IA errou a classificação - profissional faz a correção.",
     )
     data_criacao: datetime = Field(
         default_factory=datetime.utcnow, description="Data e hora de criação da ficha de triagem"
@@ -106,8 +114,9 @@ class FichaTriagemCAPS(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "nivel_prioridade": "Baixa",
-                "fatores_risco": ["Ansiedade leve", "Insônia"],
+                "nivel_prioridade": "Média",
+                "fatores_risco": ["Ansiedade generalizada", "Absenteísmo"],
+                "encaminhamento_recomendado": "Psicólogo + Grupo de Apoio para Ansiedade",
                 "oficinas_sugeridas": ["Oficina de Mindfulness", "Grupo de Suporte em Ansiedade"],
                 "status_aprovacao": "aprovado",
                 "data_criacao": "2024-01-15T10:30:00",
