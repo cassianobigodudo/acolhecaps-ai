@@ -37,6 +37,7 @@ class GroqSettings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignora campos extras do .env (como N8N_WEBHOOK_URL)
 
 
 @lru_cache(maxsize=1)

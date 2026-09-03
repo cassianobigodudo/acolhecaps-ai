@@ -12,6 +12,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import ValidationError
 
@@ -19,6 +20,9 @@ from app.models.acolhimento import EntradaAcolhimento, FichaTriagemCAPS
 from app.services.alert_service import obter_alert_service
 from app.services.observability import setup_observability_logger
 from app.services.graph_service import executar_acolhimento
+
+# Carregar variáveis de ambiente do .env
+load_dotenv()
 
 # ============================================================================
 # Logging Configuration
