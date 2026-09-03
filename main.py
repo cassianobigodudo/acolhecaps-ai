@@ -263,7 +263,7 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                     f"[HITL] Mensagem Discord gerada | trace_id={trace_id}"
                 )
                 logger.info(
-                    f"[HITL] AlertService disponível, iniciando thread de alerta | trace_id={trace_id}"
+                    f"[HITL] AlertService disponível, disparando alerta | trace_id={trace_id}"
                 )
                 
                 # Executa em thread para não bloquear
@@ -271,12 +271,13 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                 thread_alerta = threading.Thread(
                     target=_disparar_alerta_hitl_async,
                     args=(alert_service, mensagem_discord, trace_id),
-                    daemon=True,
+                    daemon=False,  # NÃO é daemon para garantir que complete
                 )
                 thread_alerta.start()
+                thread_alerta.join(timeout=5)  # Aguarda até 5s para completar
                 
                 logger.info(
-                    f"[HITL] Thread de alerta iniciada | trace_id={trace_id}"
+                    f"[HITL] Thread de alerta finalizada | trace_id={trace_id}"
                 )
                 
             except Exception as e:
