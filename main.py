@@ -274,7 +274,7 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                     daemon=False,  # NÃO é daemon para garantir que complete
                 )
                 thread_alerta.start()
-                thread_alerta.join(timeout=5)  # Aguarda até 5s para completar
+                thread_alerta.join(timeout=60)  # Aguarda até 60s (1 minuto) para completar
                 
                 logger.info(
                     f"[HITL] Thread de alerta finalizada | trace_id={trace_id}"
