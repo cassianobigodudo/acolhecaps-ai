@@ -11,6 +11,7 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -249,6 +250,39 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
             f"prioridade_final={ficha_atualizada.get('nivel_prioridade')}"
         )
         
+        # Dispara alerta para Discord via n8n webhook
+        if alert_service:
+            try:
+                # Gera mensagem formatada
+                mensagem_discord = hitl_manager.gerar_mensagem_discord(
+                    trace_id=trace_id,
+                    ficha=ficha_atualizada,
+                )
+                
+                logger.info(
+                    f"[HITL] Disparando alerta Discord | trace_id={trace_id}"
+                )
+                
+                # Executa em thread para não bloquear
+                import threading
+                thread_alerta = threading.Thread(
+                    target=_disparar_alerta_hitl_async,
+                    args=(alert_service, mensagem_discord, trace_id),
+                    daemon=True,
+                )
+                thread_alerta.start()
+                
+            except Exception as e:
+                logger.warning(
+                    f"[HITL] Erro ao disparar alerta (não bloqueia resposta) | "
+                    f"erro={str(e)} | trace_id={trace_id}"
+                )
+        else:
+            logger.info(
+                f"[HITL] AlertService não configurado, alertas desabilitados | "
+                f"trace_id={trace_id}"
+            )
+        
         return {
             "status": "sucesso",
             "trace_id": trace_id,
@@ -265,6 +299,54 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao processar HITL: {str(e)}",
+        )
+
+
+def _disparar_alerta_hitl_async(
+    alert_service,
+    mensagem_discord: str,
+    trace_id: str,
+) -> None:
+    """
+    Dispara alerta HITL para Discord em thread separada.
+    """
+    try:
+        import asyncio
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        logger.info(
+            f"[ALERTA_HITL] Enviando mensagem ao Discord | trace_id={trace_id}"
+        )
+        
+        # Cria payload para n8n
+        payload = {
+            "tipo": "hitl_decision",
+            "mensagem": mensagem_discord,
+            "trace_id": trace_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+        # Envia via webhook do alert_service
+        resultado = loop.run_until_complete(
+            alert_service.enviar_webhook_direto(payload)
+        )
+        
+        if resultado:
+            logger.info(
+                f"[ALERTA_HITL] Mensagem enviada com sucesso | trace_id={trace_id}"
+            )
+        else:
+            logger.warning(
+                f"[ALERTA_HITL] Falha ao enviar mensagem | trace_id={trace_id}"
+            )
+        
+        loop.close()
+        
+    except Exception as e:
+        logger.error(
+            f"[ALERTA_HITL] Erro ao enviar alerta | erro={str(e)} | trace_id={trace_id}"
         )
 
 

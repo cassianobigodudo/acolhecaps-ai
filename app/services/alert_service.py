@@ -248,6 +248,48 @@ class AlertService:
         """Fecha a conexão do cliente HTTP."""
         await self.client.aclose()
 
+    async def enviar_webhook_direto(self, payload: Dict[str, Any]) -> bool:
+        """
+        Envia um webhook direto com payload customizado.
+        
+        Útil para alertas customizados (como HITL decisions).
+
+        Args:
+            payload: Dados a enviar para o webhook
+
+        Returns:
+            True se sucesso, False caso contrário
+        """
+        try:
+            logger.info(
+                f"[ALERT_SERVICE] Enviando webhook direto | "
+                f"tipo={payload.get('tipo', 'desconhecido')}"
+            )
+
+            response = await self.client.post(
+                self.webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+
+            if response.status_code in [200, 201, 202]:
+                logger.info(
+                    f"[ALERT_SERVICE] Webhook direto retornou {response.status_code}"
+                )
+                return True
+            else:
+                logger.warning(
+                    f"[ALERT_SERVICE] Webhook direto retornou {response.status_code} | "
+                    f"response={response.text[:200]}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(
+                f"[ALERT_SERVICE] Erro ao enviar webhook direto | erro={str(e)}"
+            )
+            return False
+
 
 # ============================================================================
 # Factory Function (para usar em graph_service)
