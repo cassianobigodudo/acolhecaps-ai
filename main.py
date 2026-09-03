@@ -317,16 +317,14 @@ def _disparar_alerta_hitl_async(
 ) -> None:
     """
     Dispara alerta HITL para Discord em thread separada.
+    Usa requests síncrono para evitar problemas com event loop em threads.
     """
     try:
-        import asyncio
+        import requests
         
         logger.info(
             f"[ALERTA_HITL] Iniciando disparo | trace_id={trace_id}"
         )
-        
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         
         logger.info(
             f"[ALERTA_HITL] Enviando mensagem ao Discord | trace_id={trace_id}"
@@ -344,21 +342,34 @@ def _disparar_alerta_hitl_async(
             f"[ALERTA_HITL] Payload criado | size={len(str(payload))} | trace_id={trace_id}"
         )
         
-        # Envia via webhook do alert_service
-        resultado = loop.run_until_complete(
-            alert_service.enviar_webhook_direto(payload)
-        )
-        
-        if resultado:
-            logger.info(
-                f"[ALERTA_HITL] ✅ Mensagem enviada com sucesso | trace_id={trace_id}"
+        # Usa requests síncrono em vez de httpx assíncrono
+        try:
+            response = requests.post(
+                alert_service.webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=10,
             )
-        else:
-            logger.warning(
-                f"[ALERTA_HITL] ❌ Falha ao enviar mensagem | trace_id={trace_id}"
+            
+            if response.status_code in [200, 201, 202]:
+                logger.info(
+                    f"[ALERTA_HITL] ✅ Mensagem enviada com sucesso | "
+                    f"status={response.status_code} | trace_id={trace_id}"
+                )
+            else:
+                logger.warning(
+                    f"[ALERTA_HITL] ⚠️ Webhook retornou {response.status_code} | "
+                    f"response={response.text[:200]} | trace_id={trace_id}"
+                )
+                
+        except requests.exceptions.Timeout:
+            logger.error(
+                f"[ALERTA_HITL] ❌ Timeout ao enviar webhook (10s) | trace_id={trace_id}"
             )
-        
-        loop.close()
+        except requests.exceptions.ConnectionError:
+            logger.error(
+                f"[ALERTA_HITL] ❌ Erro de conexão ao enviar webhook | trace_id={trace_id}"
+            )
         
     except Exception as e:
         logger.error(
