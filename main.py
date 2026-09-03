@@ -260,7 +260,10 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                 )
                 
                 logger.info(
-                    f"[HITL] Disparando alerta Discord | trace_id={trace_id}"
+                    f"[HITL] Mensagem Discord gerada | trace_id={trace_id}"
+                )
+                logger.info(
+                    f"[HITL] AlertService disponível, iniciando thread de alerta | trace_id={trace_id}"
                 )
                 
                 # Executa em thread para não bloquear
@@ -271,6 +274,10 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                     daemon=True,
                 )
                 thread_alerta.start()
+                
+                logger.info(
+                    f"[HITL] Thread de alerta iniciada | trace_id={trace_id}"
+                )
                 
             except Exception as e:
                 logger.warning(
@@ -313,6 +320,10 @@ def _disparar_alerta_hitl_async(
     try:
         import asyncio
         
+        logger.info(
+            f"[ALERTA_HITL] Iniciando disparo | trace_id={trace_id}"
+        )
+        
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
@@ -328,6 +339,10 @@ def _disparar_alerta_hitl_async(
             "timestamp": datetime.now().isoformat(),
         }
         
+        logger.info(
+            f"[ALERTA_HITL] Payload criado | size={len(str(payload))} | trace_id={trace_id}"
+        )
+        
         # Envia via webhook do alert_service
         resultado = loop.run_until_complete(
             alert_service.enviar_webhook_direto(payload)
@@ -335,18 +350,18 @@ def _disparar_alerta_hitl_async(
         
         if resultado:
             logger.info(
-                f"[ALERTA_HITL] Mensagem enviada com sucesso | trace_id={trace_id}"
+                f"[ALERTA_HITL] ✅ Mensagem enviada com sucesso | trace_id={trace_id}"
             )
         else:
             logger.warning(
-                f"[ALERTA_HITL] Falha ao enviar mensagem | trace_id={trace_id}"
+                f"[ALERTA_HITL] ❌ Falha ao enviar mensagem | trace_id={trace_id}"
             )
         
         loop.close()
         
     except Exception as e:
         logger.error(
-            f"[ALERTA_HITL] Erro ao enviar alerta | erro={str(e)} | trace_id={trace_id}"
+            f"[ALERTA_HITL] ❌ Erro ao enviar alerta | erro={str(e)} | trace_id={trace_id}"
         )
 
 
