@@ -7,6 +7,7 @@ do Ministério da Saúde para embasar as decisões de triagem do agente.
 Características:
 - Indexação vetorial com FAISS
 - Diretrizes clínicas pré-indexadas
+- Suporte a PDFs customizados
 - Busca semântica por similaridade
 - Cache de embeddings
 - Logging estruturado com trace_id
@@ -14,6 +15,7 @@ Características:
 
 import json
 import logging
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -321,26 +323,129 @@ class RAGService:
 
         return embedding
 
-    def _busca_manual(self, query_embedding: np.ndarray, top_k: int):
-        """Busca manual por similaridade de cosseno (fallback)."""
-        if not self.embeddings_cache:
-            return np.array([]), np.array([])
-
-        scores = []
-        for idx, embedding in self.embeddings_cache.items():
-            # Similaridade de cosseno
-            score = np.dot(query_embedding, embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(embedding) + 1e-8
+    def carregar_pdf_protocolo(self, caminho_pdf: str) -> Dict:
+        """
+        Carrega um PDF de protocolo e indexa seu conteúdo.
+        
+        Args:
+            caminho_pdf: Caminho para o arquivo PDF
+            
+        Returns:
+            Dicionário com status do carregamento
+        """
+        try:
+            import pdfplumber
+        except ImportError:
+            logger.warning(
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "pdfplumber_nao_instalado",
+                        "timestamp": self._timestamp_iso(),
+                    }
+                )
             )
-            scores.append((idx, 1 - score))  # Converter em distância
+            return {"sucesso": False, "erro": "pdfplumber não instalado"}
 
-        # Ordenar por distância
-        scores.sort(key=lambda x: x[1])
+        logger.info(
+            json.dumps(
+                {
+                    "trace_id": self.trace_id,
+                    "evento": "carregamento_pdf_iniciado",
+                    "arquivo": caminho_pdf,
+                    "timestamp": self._timestamp_iso(),
+                }
+            )
+        )
 
-        indices = np.array([s[0] for s in scores[:top_k]])
-        distances = np.array([s[1] for s in scores[:top_k]])
+        try:
+            documentos_pdf = []
+            
+            with pdfplumber.open(caminho_pdf) as pdf:
+                total_paginas = len(pdf.pages)
+                
+                for num_pagina, page in enumerate(pdf.pages, 1):
+                    texto = page.extract_text()
+                    
+                    if texto and texto.strip():
+                        # Dividir em chunks pequenos para melhor retrieval
+                        chunks = self._dividir_em_chunks(texto, tamanho=500)
+                        
+                        for chunk in chunks:
+                            documentos_pdf.append({
+                                "conteudo": chunk,
+                                "prioridade": "protocolo",
+                                "fonte": Path(caminho_pdf).name,
+                                "pagina": num_pagina,
+                            })
+            
+            # Adicionar aos documentos existentes
+            self.documents.extend(documentos_pdf)
+            
+            # Reindexar tudo
+            self.indexar_diretrizes()
+            
+            logger.info(
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "pdf_carregado_com_sucesso",
+                        "arquivo": caminho_pdf,
+                        "total_chunks": len(documentos_pdf),
+                        "timestamp": self._timestamp_iso(),
+                    }
+                )
+            )
+            
+            return {
+                "sucesso": True,
+                "arquivo": Path(caminho_pdf).name,
+                "total_paginas": total_paginas,
+                "total_chunks": len(documentos_pdf),
+                "status": "indexado"
+            }
+            
+        except Exception as e:
+            logger.error(
+                json.dumps(
+                    {
+                        "trace_id": self.trace_id,
+                        "evento": "erro_carregamento_pdf",
+                        "arquivo": caminho_pdf,
+                        "erro": str(e),
+                        "timestamp": self._timestamp_iso(),
+                    }
+                )
+            )
+            return {"sucesso": False, "erro": str(e), "arquivo": caminho_pdf}
 
-        return indices, distances
+    @staticmethod
+    def _dividir_em_chunks(texto: str, tamanho: int = 500, sobreposicao: int = 100) -> List[str]:
+        """
+        Divide texto em chunks com sobreposição.
+        
+        Args:
+            texto: Texto a dividir
+            tamanho: Tamanho máximo de cada chunk
+            sobreposicao: Número de caracteres de sobreposição entre chunks
+            
+        Returns:
+            Lista de chunks
+        """
+        chunks = []
+        inicio = 0
+        
+        while inicio < len(texto):
+            fim = min(inicio + tamanho, len(texto))
+            chunk = texto[inicio:fim].strip()
+            
+            if chunk:
+                chunks.append(chunk)
+            
+            # Mover para próximo chunk com sobreposição
+            inicio += (tamanho - sobreposicao)
+        
+        return chunks if chunks else [texto]
 
 
 # Exportar instância singleton
@@ -350,6 +455,10 @@ _rag_singleton: Optional[RAGService] = None
 def obter_rag_service(trace_id: Optional[str] = None) -> RAGService:
     """
     Obtém ou cria a instância do RAG Service (singleton).
+    
+    Carrega automaticamente:
+    1. Diretrizes clínicas hardcoded
+    2. PDF de protocolo se existir em docs/
 
     Args:
         trace_id: ID único para correlação de logs
@@ -361,4 +470,12 @@ def obter_rag_service(trace_id: Optional[str] = None) -> RAGService:
     if _rag_singleton is None:
         _rag_singleton = RAGService(trace_id=trace_id)
         _rag_singleton.indexar_diretrizes()
+        
+        # Tentar carregar PDF de protocolo se existir
+        pdf_protocolo = Path(__file__).parent.parent.parent / "docs" / "PROTOCOLO -CLASSIFICACAO-DE-RISCO-EM-SAUDE-MENTAL.pdf"
+        if pdf_protocolo.exists():
+            logger.info(f"Carregando PDF de protocolo: {pdf_protocolo}")
+            resultado = _rag_singleton.carregar_pdf_protocolo(str(pdf_protocolo))
+            logger.info(f"Resultado do carregamento: {resultado}")
+    
     return _rag_singleton
