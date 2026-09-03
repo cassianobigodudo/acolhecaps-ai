@@ -21,6 +21,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
 from app.models import EntradaAcolhimento
+from app.services.alert_service import AlertService
 from app.services.llm_service import get_groq_llm
 from app.services.mcp_territorial_tool import obter_tool_territorial
 from app.services.rag_service import obter_rag_service
@@ -397,6 +398,47 @@ def node_finalizacao(state: AcolhimentoState) -> AcolhimentoState:
             f"trace_id={trace_id}"
         )
 
+        # Dispara alerta via n8n se alert_service está configurado
+        if _current_alert_service:
+            nivel_prioridade = state["ficha_triagem"].get("nivel_prioridade", "Baixa")
+            
+            # Executa disparo de alerta de forma assíncrona (não bloqueia o fluxo)
+            try:
+                logger.info(
+                    f"[NODE_FINALIZACAO] Iniciando disparo de alerta | "
+                    f"prioridade={nivel_prioridade} | trace_id={trace_id}"
+                )
+                
+                # Executa em thread separada (não bloqueia o grafo)
+                import threading
+                thread_alerta = threading.Thread(
+                    target=_disparar_alerta_async,
+                    args=(
+                        _current_alert_service,
+                        nivel_prioridade,
+                        state["ficha_triagem"],
+                        state["entrada"],
+                        trace_id,
+                    ),
+                    daemon=True,
+                )
+                thread_alerta.start()
+                
+                logger.info(
+                    f"[NODE_FINALIZACAO] Thread de alerta iniciada | trace_id={trace_id}"
+                )
+                
+            except Exception as e:
+                logger.warning(
+                    f"[NODE_FINALIZACAO] Erro ao disparar alerta (não bloqueia fluxo) | "
+                    f"erro={str(e)} | trace_id={trace_id}"
+                )
+        else:
+            logger.info(
+                f"[NODE_FINALIZACAO] AlertService não configurado, alertas desabilitados | "
+                f"trace_id={trace_id}"
+            )
+
     except Exception as e:
         logger.error(
             f"[NODE_FINALIZACAO] Erro durante finalização | " f"erro={str(e)} | trace_id={trace_id}"
@@ -404,6 +446,56 @@ def node_finalizacao(state: AcolhimentoState) -> AcolhimentoState:
         raise
 
     return state
+
+
+def _disparar_alerta_async(
+    alert_service: AlertService,
+    nivel_prioridade: str,
+    ficha_triagem: dict,
+    entrada: dict,
+    trace_id: str,
+) -> None:
+    """
+    Dispara alerta de forma assíncrona em thread separada.
+    Não bloqueia o fluxo do grafo.
+    """
+    try:
+        # Cria novo event loop para a thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        logger.info(
+            f"[ALERTA_THREAD] Disparando alerta no n8n | "
+            f"prioridade={nivel_prioridade} | trace_id={trace_id}"
+        )
+        
+        resultado = loop.run_until_complete(
+            alert_service.verificar_e_disparar_alerta(
+                nivel_prioridade=nivel_prioridade,
+                ficha_triagem=ficha_triagem,
+                entrada_acolhimento=entrada,
+                trace_id=trace_id,
+            )
+        )
+        
+        if resultado:
+            logger.info(
+                f"[ALERTA_THREAD] Alerta disparado com sucesso no n8n | "
+                f"prioridade={nivel_prioridade} | trace_id={trace_id}"
+            )
+        else:
+            logger.warning(
+                f"[ALERTA_THREAD] Falha ao disparar alerta no n8n | "
+                f"prioridade={nivel_prioridade} | trace_id={trace_id}"
+            )
+        
+        loop.close()
+        
+    except Exception as e:
+        logger.error(
+            f"[ALERTA_THREAD] Erro na thread de alerta | "
+            f"erro={str(e)} | trace_id={trace_id}"
+        )
 
 
 # ============================================================================
@@ -524,33 +616,43 @@ def criar_grafo_acolhimento():
 # ============================================================================
 
 
-def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
+def executar_acolhimento(
+    entrada_dict: dict,
+    alert_service: Optional[AlertService] = None,
+    trace_id: Optional[str] = None,
+) -> dict:
     """
     Executa o grafo de acolhimento com entrada tipada.
 
     Args:
-        entrada: Dict com id_paciente, relato, cep (será validado como EntradaAcolhimento)
+        entrada_dict: Dict com id_paciente, relato, cep (será validado como EntradaAcolhimento)
+        alert_service: Instância do AlertService para disparo de webhooks (opcional)
         trace_id: ID de rastreabilidade (gerado se não fornecido)
 
     Returns:
         Dict com resultado final (ficha de triagem e histórico)
     """
-    global _current_trace_id
+    global _current_trace_id, _current_alert_service
 
     # Gera trace_id se não fornecido
     if trace_id is None:
         trace_id = f"trace-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
 
     _current_trace_id = trace_id
+    _current_alert_service = alert_service
 
     # Setup logging
     setup_logging(trace_id)
 
     logger.info(f"[EXEC] Iniciando execução do grafo | trace_id={trace_id}")
+    if alert_service:
+        logger.info(f"[EXEC] AlertService está habilitado | webhook_url={alert_service.webhook_url}")
+    else:
+        logger.info(f"[EXEC] AlertService não fornecido, alertas desabilitados")
 
     try:
         # Valida entrada
-        entrada_validada = EntradaAcolhimento(**entrada)
+        entrada_validada = EntradaAcolhimento(**entrada_dict)
         logger.info(f"[EXEC] Entrada validada com sucesso | trace_id={trace_id}")
 
     except Exception as e:
@@ -593,3 +695,6 @@ def executar_acolhimento(entrada: dict, trace_id: Optional[str] = None) -> dict:
 
 # Variável global para armazenar trace_id entre nós
 _current_trace_id: str = ""
+
+# Variável global para armazenar alert_service entre nós
+_current_alert_service: Optional[AlertService] = None
