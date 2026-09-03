@@ -172,66 +172,83 @@ Pontos-chave:
     ) -> tuple[str, list[str]]:
         """
         Avalia o nível de prioridade e fatores de risco usando Groq.
+        Inclui contexto do PDF protocolo na avaliação.
 
         Args:
             relato: Relato do paciente
-            contexto_rag: Contexto de diretrizes clínicas (opcional)
+            contexto_rag: Contexto de diretrizes clínicas (DO PDF PROTOCOLO)
             trace_id: ID de rastreabilidade (opcional)
 
         Returns:
             tuple: (nivel_prioridade, fatores_risco)
         """
-        contexto_part = f"Contexto de diretrizes: {contexto_rag}\n\n" if contexto_rag else ""
+        # Indicator que mostra se contexto vem do PDF
+        contexto_indicator = "[CONTEXTO DO PROTOCOLO PDF]" if contexto_rag else "[SEM CONTEXTO]"
+        
+        contexto_part = f"""{contexto_indicator}
 
-        prompt = f"""
-{contexto_part}
-CRITÉRIOS DE CLASSIFICAÇÃO PARA TRIAGEM EM CAPS:
-
-PRIORIDADE CRÍTICA (risco iminente):
-- Ideação/tentativa de suicídio ATIVA com plano definido
-- Ideação/tentativa de homicídio ativa
-- Psicose desorganizada ou catatonia
-- Intoxicação ou abuso de substância grave
-- Risco imediato de dano a si ou outros
-
-PRIORIDADE ALTA (risco significativo):
-- Ideação suicida/homicida sem plano específico mas com intenção
-- História prévia de tentativa de suicídio
-- Episódio maníaco ou transtorno bipolar não controlado
-- Transtorno de personalidade borderline com comportamento destrutivo
-- Alucinações ou delírios persecutórios
-- Abuso de substância com comprometimento importante
-- Depressão severa com sintomas incapacitantes
-
-PRIORIDADE MÉDIA (sofrimento psíquico moderado):
-- Ansiedade generalizada com impacto na vida diária
-- Depressão leve a moderada COM comprometimento funcional
-- Depressão CRÔNICA (indústria, falta de energia, absenteísmo)
-- Transtorno de relacionamento significativo
-- Histórico de trauma não resolvido
-- Stress ocupacional severo
-- Pacientes que já fazem ou fizeram tratamento psicológico
-- Isolamento social moderado
-
-PRIORIDADE BAIXA (sofrimento mínimo):
-- Dificuldades de adaptação leves e transitórias
-- Preocupações situacionais normais (luto recente, mudança de vida)
-- Queixa somática sem clareza de causa psicológica
-- Pacientes com suporte adequado e funcionamento preservado
+Contexto do Protocolo Oficial:
+{contexto_rag}
 
 ---
 
-Avalie o relato seguinte RIGOROSAMENTE segundo os critérios acima:
+""" if contexto_rag else ""
+
+        prompt = f"""
+{contexto_part}
+PROTOCOLO OFICIAL DE CLASSIFICAÇÃO DE RISCO EM SAÚDE MENTAL (Secretaria ES)
+
+VERMELHO - Emergência/Risco Grave (atendimento imediato):
+- Tentativa de suicídio em qualquer circunstância
+- Episódio depressivo grave COM ideação suicida e planejamento ou histórico de tentativa
+- Episódio maníaco COM comportamento inadequado e risco para si/terceiros
+- Autonegligência grave com comorbidades
+- Intoxicação aguda por substâncias
+- Quadro psicótico com delírios/alucinações e risco
+- Automutilação (cutting) com risco de morte
+- Agitação psicomotora com ideação/planejamento de homicídio/suicídio
+- Dependência química com agitação/agressividade e múltiplas tentativas prévias de tratamento
+
+LARANJA - Urgência/Risco Elevado (atendimento clínico especializado):
+- Quadro depressivo GRAVE COM ideação suicida SEM planejamento e sem apoio familiar
+- Quadro psicótico agudo SEM agitação mas SEM apoio familiar
+- Autonegligência grave
+- Alcoolismo/dependência com abstinência leve/moderada sem êxito em tratamento
+- Quadros refratários ao ambulatório
+- Episódios conversivos/dissociativos com risco
+
+AMARELO - Urgência/Risco Moderado (CAPS, ambulatório especializado):
+- Quadro depressivo MODERADO com apoio sociofamiliar para tratamento
+- Quadro psicótico agudo SEM agitação COM apoio sociofamiliar
+- Dependência com abstinência leve e capacidade de participar de programa ambulatorial
+- Histórico de tentativa de suicídio/homicídio E internação prévia
+
+VERDE - Risco Baixo (Atenção Primária):
+- Síndromes depressivas LEVES
+- Transtorno bipolar: episódio depressivo/maníaco SEM risco para si/terceiros
+- Insônia
+- Transtornos conversivos/dissociativos SEM risco
+- Sintomas psicossomáticos, crises de ansiedade
+- Uso nocivo/abusivo de álcool ou substâncias
+- Luto, reação adaptativa
+
+AZUL - Não urgente (Acompanhamento ambulatorial):
+- Condições psiquiátricas crônicas estabilizadas
+- Manutenção de acompanhamento com medicação estabilizada
+- Demandas administrativas
+
+---
+
+Avalie o relato seguinte RIGOROSAMENTE segundo o Protocolo acima:
 
 Relato:
 {relato}
 
 Responda EXATAMENTE no seguinte formato:
-PRIORIDADE: [Alta|Média|Baixa]
+PRIORIDADE: [Crítica|Alta|Média|Baixa]
 FATORES_RISCO: [fator1, fator2, fator3]
 
-IMPORTANTE: Depressão crônica é SEMPRE Média ou superior. Isolamento social é sinal de Média. 
-Absenteísmo do trabalho indica comprometimento funcional = Média no mínimo.
+IMPORTANTE: Use APENAS os critérios do Protocolo. Não adicione regras extras.
 
 Resposta:
 """
@@ -249,8 +266,8 @@ Resposta:
                 prioridade_raw = linha.split("PRIORIDADE:")[1].strip()
                 # Remove colchetes se presentes
                 prioridade_raw = prioridade_raw.replace("[", "").replace("]", "")
-                # Extrai apenas a palavra-chave (Alta, Média, Baixa)
-                for nivel in ["Alta", "Média", "Baixa"]:
+                # Extrai apenas a palavra-chave (Crítica, Alta, Média, Baixa)
+                for nivel in ["Crítica", "Alta", "Média", "Baixa"]:
                     if nivel in prioridade_raw:
                         prioridade = nivel
                         break
