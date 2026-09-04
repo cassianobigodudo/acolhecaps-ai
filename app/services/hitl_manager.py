@@ -200,9 +200,10 @@ class HITLManager:
         trace_id: str, 
         ficha: Dict,
         entrada: Optional[Dict] = None,
-    ) -> str:
+    ) -> tuple:
         """
         Gera mensagem formatada para Discord sobre decisão HITL.
+        Retorna (mensagem_texto, cor_embed).
 
         Args:
             trace_id: ID único da triagem
@@ -210,27 +211,19 @@ class HITLManager:
             entrada: Dados de entrada (opcional, para mais contexto)
 
         Returns:
-            String formatada para Discord
+            Tupla (mensagem_texto, cor_hex) para usar em Discord embed
         """
         status = ficha.get("status_aprovacao", "desconhecido").upper()
         prioridade = ficha.get("nivel_prioridade", "?")
         encaminhamento = ficha.get("encaminhamento_recomendado", "Não especificado")
         observacoes = ficha.get("observacoes", "Sem observações")
 
-        # Define emoji baseado em status
-        emoji_status = "✅" if status == "APROVADO" else "🔧"
-        emoji_prioridade = {
-            "Alta": "🚨",
-            "Média": "⚠️",
-            "Baixa": "✅",
-        }.get(prioridade, "❓")
-
-        # Define cor baseada em prioridade (Discord embeds)
-        cor_prioridade = {
-            "Alta": 15158332,      # Vermelho
-            "Média": 16776960,     # Amarelo
-            "Baixa": 52224,        # Verde
-        }.get(prioridade, 9807270)  # Cinza padrão
+        # Define cor baseada em prioridade (Discord hex colors)
+        cores = {
+            "Média": 16776960,      # Amarelo (FFFF00)
+            "Alta": 16711680,       # Vermelho (FF0000)
+        }
+        cor = cores.get(prioridade, 9807270)  # Cinza padrão
 
         profissional_nome = "Não informado"
         profissional_profissao = "Não informado"
@@ -243,34 +236,28 @@ class HITLManager:
             prof_info = ficha.get("profissional_corretor", {})
             profissional_nome = prof_info.get("nome", "Não informado")
             profissional_profissao = prof_info.get("profissao", "Não informado")
-            # Adiciona prioridade original se foi corrigida
-            prioridade_original = ficha.get("nivel_prioridade_original", "?")
-            prioridade = f"{prioridade_original} → {prioridade}"
+
+        # Define emoji de prioridade
+        emoji_prioridade = "⚠️" if prioridade == "Média" else "🚨"
 
         # Monta mensagem em formato Markdown para Discord
-        mensagem = f"""
-{emoji_status} **DECISÃO HITL REGISTRADA**
+        mensagem = f"""{emoji_prioridade} **HITL - Prioridade {prioridade}**
 
 **Status:** {status}
-**Prioridade:** {emoji_prioridade} {prioridade}
 **Encaminhamento:** {encaminhamento}
 
-**Profissional:**
-├─ Nome: {profissional_nome}
-└─ Profissão: {profissional_profissao}
-
+**Profissional:** {profissional_nome} ({profissional_profissao})
 **Observações:** {observacoes}
 
 **Trace ID:** `{trace_id}`
-**Data:** {ficha.get('data_aprovacao', 'Desconhecida')}
-        """.strip()
+**Data:** {ficha.get('data_aprovacao', 'Desconhecida')}"""
 
         logger.info(
             f"[HITL_MANAGER] Mensagem Discord gerada | "
-            f"trace_id={trace_id} | status={status}"
+            f"trace_id={trace_id} | status={status} | prioridade={prioridade}"
         )
 
-        return mensagem
+        return mensagem, cor
 
 
 # Singleton global

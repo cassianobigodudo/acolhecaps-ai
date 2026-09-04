@@ -254,7 +254,7 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
         if alert_service:
             try:
                 # Gera mensagem formatada
-                mensagem_discord = hitl_manager.gerar_mensagem_discord(
+                mensagem_discord, cor_discord = hitl_manager.gerar_mensagem_discord(
                     trace_id=trace_id,
                     ficha=ficha_atualizada,
                 )
@@ -265,6 +265,17 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                 logger.info(
                     f"[HITL] AlertService disponível, disparando alerta | trace_id={trace_id}"
                 )
+                
+                # Cria payload para n8n
+                payload = {
+                    "tipo": "hitl_decision",
+                    "nivel_prioridade": ficha_atualizada.get("nivel_prioridade"),
+                    "status_aprovacao": ficha_atualizada.get("status_aprovacao"),
+                    "mensagem": mensagem_discord,
+                    "cor": cor_discord,
+                    "trace_id": trace_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
                 
                 # Executa em thread para não bloquear
                 import threading
