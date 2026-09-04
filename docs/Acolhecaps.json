@@ -1,0 +1,218 @@
+{
+  "name": "Acolhecaps",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/acolhecaps-alerts",
+        "options": {}
+      },
+      "id": "904807c7-19e4-4ea2-95db-bf3674289e59",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "cadf3c71-bf6a-4884-8744-f9b9d203e8a6"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.nivel_prioridade }}",
+                    "rightValue": "Média",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6b1a2f12-ffd5-42b3-ad80-648a38d639d3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Média"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.nivel_prioridade }}",
+                    "rightValue": "Alta",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "738e7c76-a520-4483-a6ae-ba1f047960cc"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Alta"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a207d9b1-05db-45f8-8577-12998693f8ae",
+      "name": "Roteia por Nível",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1545147029565472808",
+          "cachedResultName": "AcolheCAPS"
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1545147030605668435",
+          "cachedResultName": "geral"
+        },
+        "content": "=@here ⚠️ Novo paciente risco médio!",
+        "options": {},
+        "embeds": {
+          "values": [
+            {
+              "description": "={{ $json.body.mensagem }}",
+              "color": "#FBAA29",
+              "timestamp": "={{ $json.body.timestamp }}",
+              "title": "⚠️ Alerta de Risco Médio"
+            }
+          ]
+        }
+      },
+      "id": "0b7e93fb-3d80-431f-9f7f-37a3c121c857",
+      "name": "Alerta Média",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        656,
+        -128
+      ],
+      "webhookId": "163a4d56-db89-4691-8cba-8b58d1668f09",
+      "credentials": {
+        "discordBotApi": {
+          "id": "j58bUAU8ugHm59y8",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1545147029565472808",
+          "cachedResultName": "AcolheCAPS"
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1545147030605668435",
+          "cachedResultName": "geral"
+        },
+        "content": "=🚨 @here NOVO PACIENTE RISCO ALTO!",
+        "options": {},
+        "embeds": {
+          "values": [
+            {
+              "description": "={{ $json.body.mensagem }}",
+              "color": "#FF0000",
+              "timestamp": "={{ $json.body.timestamp }}",
+              "title": "🚨 Alerta de Risco Alto"
+            }
+          ]
+        }
+      },
+      "id": "96c186c0-cff2-4441-a479-d39ece676220",
+      "name": "Alerta Alta",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        656,
+        80
+      ],
+      "webhookId": "53408c97-f979-4a40-9b8c-ad2128812ddb",
+      "credentials": {
+        "discordBotApi": {
+          "id": "j58bUAU8ugHm59y8",
+          "name": "Discord Bot account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Roteia por Nível",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteia por Nível": {
+      "main": [
+        [
+          {
+            "node": "Alerta Média",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alerta Alta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "56b0e848-2389-411e-a6c2-241c1c63f52c",
+  "meta": {
+    "instanceId": "ab3da594ba485a3717ca3592cbd48c5007f3b5b9efebb077b31687ebbf0e26e6"
+  },
+  "nodeGroups": [],
+  "id": "umISOJ46olgYkZXF",
+  "tags": []
+}
