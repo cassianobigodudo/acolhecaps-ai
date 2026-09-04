@@ -270,7 +270,7 @@ async def responder_hitl(hitl_request: HITLAprovacao | HITLCorrecao):
                 import threading
                 thread_alerta = threading.Thread(
                     target=_disparar_alerta_hitl_async,
-                    args=(alert_service, mensagem_discord, trace_id),
+                    args=(alert_service, mensagem_discord, trace_id, ficha_atualizada),
                     daemon=False,  # NÃO é daemon para garantir que complete
                 )
                 thread_alerta.start()
@@ -314,6 +314,7 @@ def _disparar_alerta_hitl_async(
     alert_service,
     mensagem_discord: str,
     trace_id: str,
+    ficha_triagem: dict,
 ) -> None:
     """
     Dispara alerta HITL para Discord em thread separada.
@@ -333,6 +334,8 @@ def _disparar_alerta_hitl_async(
         # Cria payload para n8n
         payload = {
             "tipo": "hitl_decision",
+            "nivel_prioridade": ficha_triagem.get("nivel_prioridade"),
+            "status_aprovacao": ficha_triagem.get("status_aprovacao"),
             "mensagem": mensagem_discord,
             "trace_id": trace_id,
             "timestamp": datetime.now().isoformat(),
