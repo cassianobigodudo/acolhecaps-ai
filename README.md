@@ -40,6 +40,21 @@ Um **assistente de triagem e apoio à decisão** para equipes multiprofissionais
 
 ---
 
+## 🎬 Vídeo Demonstrativo
+
+**[Demonstração Técnica - AcolheCAPS AI](https://youtu.be/v-niul3VB20)** (10 minutos)
+
+Neste vídeo você verá:
+- Arquitetura do sistema com LangGraph
+- Dois cenários de uso (fluxo nominal + HITL)
+- Proteção de segurança contra prompt injection
+- Testes automatizados (103 testes passando)
+- Análise de logs com trace_id correlacionado
+- Detecção de anomalias e estimativa de falha
+- Pipeline CI/CD GitHub Actions
+
+---
+
 ## 📦 Instalação
 
 ### 1. Pré-requisitos

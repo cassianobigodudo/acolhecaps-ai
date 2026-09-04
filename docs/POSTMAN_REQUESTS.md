@@ -116,7 +116,7 @@
 ## 4️⃣ EVIDÊNCIA DE QA - Rodar Testes
 
 **No terminal** (PowerShell):
-```powershell pytest tests/ -v --tb=short | Select-String "PASSED|FAILED|passed|failed" | Select-Object -First 20
+```pytest tests/unit/ -v --tb=short | Select-String "PASSED|FAILED" | Select-Object -First 30
 ```
 
 **O que mostrar na tela:**
@@ -158,8 +158,7 @@ Coverage: 92%
 ## 6️⃣ ANÁLISE DE LOGS - Rastreabilidade com trace_id
 
 **No terminal** (PowerShell):
-```powershell
-Get-Content logs/observability.jsonl | ConvertFrom-Json | Select-Object -First 5 | Format-List
+```powershell Get-Content logs/observability.jsonl | ConvertFrom-Json | Select-Object -First 5 | Format-List
 ```
 
 **O que mostrar:**
