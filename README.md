@@ -176,48 +176,53 @@ async def fazer_triagem():
 ### Fluxo do Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ Entrada de Acolhimento                                      │
-│ (id_paciente, relato, cep)                                  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-        ┌──────────────────────────────┐
-        │ LangGraph State Machine      │
-        │ (Orquestração Principal)     │
-        └───────┬──────────────────────┘
+┌─────────────────────────────────────────────────┐
+│ Entrada de Acolhimento                          │
+│ (id_paciente, relato, cep)                      │
+└────────────────────┬────────────────────────────┘
+                     │
+                     ▼
+         ┌──────────────────────────┐
+         │ node_extracao            │
+         │ (Normaliza relato)       │
+         └───────┬──────────────────┘
+                 │
+            ┌────┴────┐
+            │          │
+            ▼          ▼
+      ┌──────────┐ ┌──────────┐
+      │ node_RAG │ │node_MCP  │  (PARALELO)
+      │(diretrizes)│(CEP OK?) │
+      └────┬─────┘ └────┬─────┘
+           │            │
+           └────┬───────┘
+                ▼
+      ┌─────────────────────┐
+      │ node_avaliacao_risco│
+      │ (classifica risco)  │
+      └─────────┬───────────┘
                 │
-        ┌───────┴─────────┐
-        │                 │
-        ▼                 ▼
-  [Sequential]      [Parallel]
-  node_extracao    ├─ node_rag_diretrizes
-  (Sintetizar)     │  (RAG PDF protocolo)
-                   └─ node_mcp_territorio
-                      (Validação CEP)
-                │                 │
-                └────────┬────────┘
-                         ▼
-            [Condicional] node_avaliacao_risco
-                (Clasifica prioridade)
-                         │
-            ┌────────────┼────────────┐
-            │            │            │
-    Prioridade     Prioridade   Prioridade
-      Baixa         Média/Alta    Crítica
-            │            │            │
-            │            ▼            │
-            │    node_human_in_      │
-            │    the_loop (HITL)     │
-            │      (Aprovação)       │
-            │            │           │
-            └────────────┼───────────┘
-                         ▼
-            [Finalizacao] node_finalizacao
-            (Dispara alertas via n8n)
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
+            ┌───┴───────┐
+            │           │
+            ▼           ▼
+          BAIXA      MÉDIA/ALTA
+            │           │
+            ▼           ▼
+      FINALIZACAO   node_HITL
+            │       (aprovação)
+            │           │
+            └─────┬─────┘
+                  ▼
+          ┌─────────────────┐
+          │ FINALIZACAO     │
+          │ (webhook n8n)   │
+          └────────┬────────┘
+                   ▼
+          ┌─────────────────┐
+          │ Discord Alerta  │
+          │ (se Med/Alta)   │
+          └─────────────────┘
+```
     JSON Output      n8n Webhook    Discord Alert
     (Ficha Triagem)  (se Médio+)     (Notificação)
 ```
