@@ -116,8 +116,7 @@
 ## 4️⃣ EVIDÊNCIA DE QA - Rodar Testes
 
 **No terminal** (PowerShell):
-```powershell
-pytest tests/ -v --tb=short | Select-String "PASSED|FAILED|passed|failed" | Select-Object -First 20
+```powershell pytest tests/ -v --tb=short | Select-String "PASSED|FAILED|passed|failed" | Select-Object -First 20
 ```
 
 **O que mostrar na tela:**
